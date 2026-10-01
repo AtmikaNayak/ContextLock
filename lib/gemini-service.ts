@@ -350,6 +350,7 @@ export async function retrieveEvidence(
   options?.onModelUsed?.(activeModel);
 
   // Extract grounding metadata safely
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metadata = response.candidates[0].groundingMetadata as any;
   const sources: import("@/types").EvidenceSource[] = [];
 
