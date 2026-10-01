@@ -199,9 +199,9 @@ export default function VerifyWorkspace() {
       setCaseId(data.media.caseId);
       setMediaId(data.media.id);
       setMediaType(data.media.mediaType);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      setUploadError(err.message || "Failed to upload media");
+      setUploadError(err instanceof Error ? err.message : "Failed to upload media");
     } finally {
       setIsUploading(false);
     }

@@ -167,3 +167,46 @@ export const VerificationResultSchema = z.object({
 });
 
 export type VerifyRequest = z.infer<typeof VerifyRequestSchema>;
+
+// ==========================================
+// Gemini Multimodal Observations & Reasoning Types
+// ==========================================
+
+export interface MediaObservations {
+  observations: string[];
+  visibleText: string[];
+  locationClues: string[];
+  timeClues: string[];
+  notableDetails: string[];
+}
+
+export const MediaObservationsSchema = z.object({
+  observations: z
+    .array(z.string())
+    .describe("Objective visual or audio observations directly present in the media"),
+  visibleText: z
+    .array(z.string())
+    .describe("Any readable text, signs, logos, banners, or subtitles"),
+  locationClues: z
+    .array(z.string())
+    .describe("Geographical clues including architectural style, road signage, landmarks, foliage"),
+  timeClues: z
+    .array(z.string())
+    .describe("Temporal indicators such as daylight conditions, weather, vehicle eras, clothing styles"),
+  notableDetails: z
+    .array(z.string())
+    .describe("Notable specific details, potential artifacts, or distinctive elements"),
+});
+
+export interface MultimodalMediaPart {
+  inlineData?: {
+    mimeType: string;
+    data: string; // Base64 encoded string
+  };
+  fileUri?: string;
+}
+
+export interface MediaObservationInput {
+  textPrompt?: string;
+  mediaParts?: MultimodalMediaPart[];
+}

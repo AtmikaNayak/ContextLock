@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VerifyRequestSchema, VerificationResult } from "@/types";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini";
 
 /**
  * ContextLock Verification API Route
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
           reliabilityScore: 0.95,
         },
       ],
-      geminiModelUsed: "gemini-2.5-flash (foundation-mock)",
+      geminiModelUsed: `${DEFAULT_GEMINI_MODEL} (foundation-mock)`,
     };
 
     return NextResponse.json(mockVerificationResult, { status: 200 });

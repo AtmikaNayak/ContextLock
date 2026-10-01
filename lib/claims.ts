@@ -1,4 +1,4 @@
-import { AtomicClaim, ClaimContextInput, ClaimDimension } from "@/types";
+import { AtomicClaim, ClaimDimension } from "@/types";
 
 /**
  * Claim Decomposition & Analysis Layer

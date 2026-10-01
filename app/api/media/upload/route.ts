@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processMediaUpload } from '@/lib/media/service';
-import { MAX_IMAGE_SIZE, MAX_VIDEO_SIZE } from '@/lib/media/validation';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +18,7 @@ export async function POST(req: NextRequest) {
       media: result,
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Media upload API error:', error);
     
     const message = error instanceof Error ? error.message : String(error);
