@@ -286,6 +286,107 @@ export async function decomposeClaims(
 }
 
 /**
+ * 3. retrieveEvidence()
+ * Retrieves external evidence using Gemini's Google Search grounding.
+ */
+export async function retrieveEvidence(
+  targetClaim: AtomicClaim,
+  contextClaims: AtomicClaim[],
+  options?: { model?: string; onModelUsed?: (model: string) => void }
+): Promise<import("@/types").EvidenceSource[]> {
+  const client = getGeminiClient();
+  const model = options?.model || GEMINI_MODELS.DEFAULT;
+
+  // Build the search intent using the target claim and relevant context
+  const contextStr = contextClaims.length > 0
+    ? `\nContext: ${contextClaims.map(c => c.claimText).join(" | ")}`
+    : "";
+
+  const promptText = `Find factual reports or news related to this claim:\nClaim: "${targetClaim.claimText}"${contextStr}`;
+
+  let response;
+  let activeModel = model;
+  const maxRetries = 3;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      response = await client.models.generateContent({
+        model: activeModel,
+        contents: [promptText],
+        config: {
+          tools: [{ googleSearch: {} }],
+          systemInstruction: "You are an investigative evidence retrieval agent. Using Google Search, find sources that are directly relevant to the user's claim and context. Summarize the findings briefly, but prioritize providing high quality search grounding. Return the most relevant facts.",
+        },
+      });
+      break;
+    } catch (err: unknown) {
+      const errString = String(err);
+      const isRateLimitOrDemand =
+        errString.includes("429") ||
+        errString.includes("503") ||
+        errString.includes("RESOURCE_EXHAUSTED") ||
+        errString.includes("UNAVAILABLE") ||
+        errString.includes("high demand");
+
+      if (isRateLimitOrDemand) {
+        if (activeModel !== GEMINI_MODELS.FAST) {
+          console.warn(`[ContextLock] Model ${activeModel} experiencing high demand; falling back to ${GEMINI_MODELS.FAST}.`);
+          activeModel = GEMINI_MODELS.FAST;
+        }
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+      }
+      throw err;
+    }
+  }
+
+  if (!response || !response.candidates || response.candidates.length === 0) {
+    return [];
+  }
+
+  options?.onModelUsed?.(activeModel);
+
+  // Extract grounding metadata safely
+  const metadata = response.candidates[0].groundingMetadata as any;
+  const sources: import("@/types").EvidenceSource[] = [];
+
+  if (metadata && metadata.groundingChunks) {
+    const urlsSeen = new Set<string>();
+    let idCounter = 1;
+
+    for (const chunk of metadata.groundingChunks) {
+      if (chunk.web && chunk.web.uri) {
+        const uri = chunk.web.uri;
+        if (!urlsSeen.has(uri)) {
+          urlsSeen.add(uri);
+          
+          let domain = "web";
+          try {
+            domain = new URL(uri).hostname;
+          } catch {
+            // fallback
+          }
+          
+          sources.push({
+            id: `ev-${Date.now()}-${idCounter++}`,
+            title: chunk.web.title || "Web Source",
+            url: uri,
+            source: domain,
+            snippet: "Retrieved from Google Search", 
+            relationship: "context", // Neutral default, reasoning happens in Phase 6
+          });
+        }
+      }
+    }
+  }
+
+  return sources;
+}
+
+/**
  * 4. analyzeEvidence()
  * Foundation stub for comparing retrieved external evidence against atomic claims.
  * Keeps external evidence retrieval strictly separate from Gemini reasoning.
