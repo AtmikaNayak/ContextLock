@@ -269,7 +269,9 @@ export async function POST(req: NextRequest) {
 
       // Execute the prove script
       const { stdout } = await execAsync(`npx tsx zk/scripts/prove.ts ${mediaHashField} ${claimHashField} ${verdictNum} ${nonce}`);
-      const zkRes = JSON.parse(stdout);
+      
+      const jsonStart = stdout.indexOf('{');
+      const zkRes = JSON.parse(stdout.substring(jsonStart));
       
       verificationResult.zkReceipt = {
         commitment: zkRes.commitment,
