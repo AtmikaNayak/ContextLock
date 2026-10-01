@@ -166,8 +166,46 @@ export default function VerifyWorkspace() {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(
     "mangalore_flood_forward.mp4"
   );
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [caseId, setCaseId] = useState<string | null>(null);
+  const [mediaId, setMediaId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(INITIAL_DEMO_RESULT);
+
+  const handleFileUpload = async (file: File) => {
+    setSelectedFileName(file.name);
+    setIsUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    if (caseId) {
+      formData.append("caseId", caseId);
+    }
+
+    try {
+      const response = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setCaseId(data.media.caseId);
+      setMediaId(data.media.id);
+      setMediaType(data.media.mediaType);
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setUploadError(err.message || "Failed to upload media");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSimulateVerification = async () => {
     setIsVerifying(true);
@@ -179,6 +217,7 @@ export default function VerifyWorkspace() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           media: {
+            id: mediaId || undefined,
             type: mediaType,
             fileName: selectedFileName || "uploaded-media.jpg",
           },
@@ -275,13 +314,13 @@ export default function VerifyWorkspace() {
               <div className="mt-4">
                 <label
                   htmlFor="media-file-input"
-                  className="group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-700 hover:border-cyan-500/60 bg-slate-950/50 p-6 text-center transition-all cursor-pointer"
+                  className={`group flex flex-col items-center justify-center rounded-lg border-2 border-dashed ${isUploading ? 'border-cyan-500 opacity-75 cursor-wait' : 'border-slate-700 hover:border-cyan-500/60 cursor-pointer'} bg-slate-950/50 p-6 text-center transition-all`}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 group-hover:bg-cyan-950/60 text-slate-400 group-hover:text-cyan-400 transition-colors">
-                    <Upload className="h-6 w-6" />
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 ${isUploading ? '' : 'group-hover:bg-cyan-950/60'} text-slate-400 ${isUploading ? 'text-cyan-400' : 'group-hover:text-cyan-400'} transition-colors`}>
+                    {isUploading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
                   </div>
-                  <p className="mt-3 text-sm font-medium text-slate-300 group-hover:text-cyan-300">
-                    Click to browse or drop {mediaType} file
+                  <p className={`mt-3 text-sm font-medium text-slate-300 ${isUploading ? '' : 'group-hover:text-cyan-300'}`}>
+                    {isUploading ? 'Uploading...' : `Click to browse or drop ${mediaType} file`}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     Supports JPG, PNG, WEBP, MP4, MOV (Up to 100MB)
@@ -290,20 +329,30 @@ export default function VerifyWorkspace() {
                     id="media-file-input"
                     type="file"
                     className="hidden"
+                    disabled={isUploading}
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
-                        setSelectedFileName(e.target.files[0].name);
+                        handleFileUpload(e.target.files[0]);
                       }
                     }}
                   />
                 </label>
 
-                {selectedFileName && (
+                {uploadError && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-950/40 px-3 py-2 border border-rose-900/50 text-xs text-rose-400">
+                    <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {selectedFileName && !uploadError && (
                   <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-950 px-3 py-2 border border-slate-800 text-xs">
                     <span className="font-mono text-cyan-400 truncate max-w-[240px]">
                       {selectedFileName}
                     </span>
-                    <span className="text-slate-400 text-[11px]">Ready for Gemini analysis</span>
+                    <span className="text-slate-400 text-[11px]">
+                      {isUploading ? 'Uploading...' : mediaId ? 'Uploaded & Ready' : 'Ready'}
+                    </span>
                   </div>
                 )}
               </div>

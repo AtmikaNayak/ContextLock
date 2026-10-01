@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { processMediaUpload } from '@/lib/media/service';
+import { MAX_IMAGE_SIZE, MAX_VIDEO_SIZE } from '@/lib/media/validation';
+
+export async function POST(req: NextRequest) {
+  try {
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const caseId = formData.get('caseId') as string | null;
+
+    if (!file) {
+      return NextResponse.json({ success: false, error: 'No media file provided.' }, { status: 400 });
+    }
+
+    const result = await processMediaUpload(file, caseId || undefined);
+
+    return NextResponse.json({
+      success: true,
+      media: result,
+    }, { status: 201 });
+
+  } catch (error: any) {
+    console.error('Media upload API error:', error);
+    
+    const message = error instanceof Error ? error.message : String(error);
+    let status = 500;
+    
+    // Determine status based on message
+    if (message.includes('Unsupported file type')) status = 400;
+    if (message.includes('exceeds')) status = 413;
+    
+    return NextResponse.json({ success: false, error: message }, { status });
+  }
+}
