@@ -121,6 +121,32 @@ export async function POST(req: NextRequest) {
           reliabilityScore: 0.95,
         },
       ],
+      syntheticMediaAnalysis: {
+        status: "no_strong_indicators",
+        confidence: "medium",
+        indicators: [
+          {
+            category: "temporal_consistency",
+            observation:
+              "Fluid vehicle wake and continuous natural water movement exhibit coherent physics across frames with no generative warping.",
+            severity: "low",
+          },
+          {
+            category: "lighting",
+            observation:
+              "Overcast diffuse sky lighting matches reflections on submerged asphalt and vehicle windshields.",
+            severity: "low",
+          },
+          {
+            category: "visual_artifact",
+            observation:
+              "Video exhibits standard H.264 social media compression blockiness rather than neural diffusion melting or synthetic boundary artifacts.",
+            severity: "low",
+          },
+        ],
+        explanation:
+          "Multimodal forensic inspection found no strong indicators of synthetic generation or neural manipulation. Physical behavior of water, reflections, and camera motion are consistent with genuine video capture, though compression reduces fine feature resolution.",
+      },
       geminiModelUsed: `${DEFAULT_GEMINI_MODEL} (foundation-mock)`,
     };
 

@@ -7,6 +7,7 @@ import {
   MediaObservationInput,
   AtomicClaim,
   EvidenceSource,
+  SyntheticMediaAnalysis,
 } from "@/types";
 import {
   AIProviderResponse,
@@ -138,6 +139,20 @@ export async function analyzeMedia(
     "analyzeMedia",
     () => geminiProvider.analyzeMedia(input, options),
     () => grokProvider.analyzeMedia(input, options)
+  );
+}
+
+/**
+ * Performs forensic analysis for synthetic / AI-generation indicators with Gemini primary and Grok fallback.
+ */
+export async function analyzeSyntheticMedia(
+  input: MediaObservationInput,
+  options?: { model?: string }
+): Promise<AIProviderResponse<SyntheticMediaAnalysis>> {
+  return executeWithFallback(
+    "analyzeSyntheticMedia",
+    () => geminiProvider.analyzeSyntheticMedia(input, options),
+    () => grokProvider.analyzeSyntheticMedia(input, options)
   );
 }
 

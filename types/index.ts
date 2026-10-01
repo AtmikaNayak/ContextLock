@@ -86,6 +86,37 @@ export interface ClaimContextInput {
   claimedLocation?: string;
 }
 
+export type SyntheticMediaStatus =
+  | "synthetic_indicators"
+  | "no_strong_indicators"
+  | "inconclusive";
+
+export type SyntheticIndicatorCategory =
+  | "visual_artifact"
+  | "facial_consistency"
+  | "lighting"
+  | "geometry"
+  | "text"
+  | "reflection"
+  | "temporal_consistency"
+  | "audio_visual"
+  | "other";
+
+export type IndicatorSeverity = "low" | "medium" | "high";
+
+export interface SyntheticMediaIndicator {
+  category: SyntheticIndicatorCategory;
+  observation: string;
+  severity: IndicatorSeverity;
+}
+
+export interface SyntheticMediaAnalysis {
+  status: SyntheticMediaStatus;
+  confidence: "low" | "medium" | "high";
+  indicators: SyntheticMediaIndicator[];
+  explanation: string;
+}
+
 export interface VerificationResult {
   id: string;
   timestamp: string;
@@ -95,6 +126,7 @@ export interface VerificationResult {
   summaryExplanation: string;
   atomicClaims: AtomicClaim[];
   evidence: EvidenceSource[];
+  syntheticMediaAnalysis?: SyntheticMediaAnalysis;
   geminiModelUsed?: string;
 }
 
@@ -147,6 +179,33 @@ export const AtomicClaimSchema = z.object({
   evidenceIds: z.array(z.string()),
 });
 
+export const SyntheticMediaIndicatorSchema = z.object({
+  category: z.enum([
+    "visual_artifact",
+    "facial_consistency",
+    "lighting",
+    "geometry",
+    "text",
+    "reflection",
+    "temporal_consistency",
+    "audio_visual",
+    "other",
+  ]),
+  observation: z.string().describe("Specific observable visual/audio clue or anomaly"),
+  severity: z.enum(["low", "medium", "high"]),
+});
+
+export const SyntheticMediaAnalysisSchema = z.object({
+  status: z.enum([
+    "synthetic_indicators",
+    "no_strong_indicators",
+    "inconclusive",
+  ]),
+  confidence: z.enum(["low", "medium", "high"]),
+  indicators: z.array(SyntheticMediaIndicatorSchema),
+  explanation: z.string().describe("Balanced, objective explanation of findings without declaring absolute proof"),
+});
+
 export const VerificationResultSchema = z.object({
   id: z.string(),
   timestamp: z.string(),
@@ -163,6 +222,7 @@ export const VerificationResultSchema = z.object({
   summaryExplanation: z.string(),
   atomicClaims: z.array(AtomicClaimSchema),
   evidence: z.array(EvidenceSourceSchema),
+  syntheticMediaAnalysis: SyntheticMediaAnalysisSchema.optional(),
   geminiModelUsed: z.string().optional(),
 });
 

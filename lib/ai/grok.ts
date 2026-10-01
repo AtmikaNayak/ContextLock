@@ -8,6 +8,8 @@ import {
   MediaObservationInput,
   AtomicClaim,
   EvidenceSource,
+  SyntheticMediaAnalysis,
+  SyntheticMediaAnalysisSchema,
 } from "@/types";
 import {
   AIProvider,
@@ -18,6 +20,7 @@ import { z } from "zod";
 import { CLAIM_DECOMPOSITION_PROMPT, createEmptyAtomicClaim } from "../claims";
 import {
   MEDIA_OBSERVATION_SYSTEM_PROMPT,
+  SYNTHETIC_ANALYSIS_SYSTEM_PROMPT,
   ReasoningResultSchema,
 } from "../gemini-service";
 
@@ -206,6 +209,82 @@ export class GrokAIProvider implements AIProvider {
 
     const data = MediaObservationsSchema.parse(parsed);
     return { data, model: result.model };
+  }
+
+  async analyzeSyntheticMedia(
+    input: MediaObservationInput,
+    options?: { model?: string }
+  ): Promise<{ data: SyntheticMediaAnalysis; model: string }> {
+    const hasVisualParts = input.mediaParts && input.mediaParts.some((p) => p.inlineData);
+    const selectedModel = options?.model || (hasVisualParts ? GROK_MODELS.VISION : GROK_MODELS.DEFAULT);
+
+    const userContent: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail?: "auto" | "low" | "high" } }
+    > = [];
+
+    if (input.mediaParts && input.mediaParts.length > 0) {
+      for (const part of input.mediaParts) {
+        if (part.inlineData) {
+          const dataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+          userContent.push({
+            type: "image_url",
+            image_url: { url: dataUrl, detail: "high" },
+          });
+        }
+      }
+    }
+
+    const promptText =
+      input.textPrompt && input.textPrompt.trim() !== ""
+        ? input.textPrompt
+        : "Forensically inspect the media for observable visual/auditory indicators characteristic of generative AI synthesis, deepfakes, face swapping, or digital manipulation.";
+
+    userContent.push({
+      type: "text",
+      text: `${promptText}\n\nYou MUST return a JSON object strictly matching this schema:
+{
+  "status": "synthetic_indicators" | "no_strong_indicators" | "inconclusive",
+  "confidence": "low" | "medium" | "high",
+  "indicators": [
+    {
+      "category": "visual_artifact" | "facial_consistency" | "lighting" | "geometry" | "text" | "reflection" | "temporal_consistency" | "audio_visual" | "other",
+      "observation": string,
+      "severity": "low" | "medium" | "high"
+    }
+  ],
+  "explanation": string
+}`,
+    });
+
+    const messages: GrokChatMessage[] = [
+      {
+        role: "system",
+        content: SYNTHETIC_ANALYSIS_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: userContent,
+      },
+    ];
+
+    const result = await this.callGrokApi(messages, {
+      model: selectedModel,
+      jsonMode: true,
+      temperature: 0.1,
+    });
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(result.content);
+    } catch (err) {
+      throw new Error(
+        `Failed to parse Grok synthetic media analysis response as JSON: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+
+    const validated = SyntheticMediaAnalysisSchema.parse(parsed);
+    return { data: validated, model: result.model };
   }
 
   async decomposeClaims(

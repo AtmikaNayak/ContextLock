@@ -9,6 +9,8 @@ import {
   MediaObservationInput,
   AtomicClaim,
   EvidenceSource,
+  SyntheticMediaAnalysis,
+  SyntheticMediaAnalysisSchema,
 } from "@/types";
 import {
   AIProvider,
@@ -20,6 +22,8 @@ import { CLAIM_DECOMPOSITION_PROMPT, createEmptyAtomicClaim } from "../claims";
 import {
   MEDIA_OBSERVATION_SYSTEM_PROMPT,
   MEDIA_OBSERVATIONS_JSON_SCHEMA,
+  SYNTHETIC_ANALYSIS_SYSTEM_PROMPT,
+  SYNTHETIC_ANALYSIS_JSON_SCHEMA,
   CLAIM_DECOMPOSITION_JSON_SCHEMA,
   REASONING_JSON_SCHEMA,
   ReasoningResultSchema,
@@ -124,6 +128,92 @@ export class GeminiAIProvider implements AIProvider {
 
     const parsed = JSON.parse(rawText);
     const data = MediaObservationsSchema.parse(parsed);
+
+    return { data, model: activeModel };
+  }
+
+  async analyzeSyntheticMedia(
+    input: MediaObservationInput,
+    options?: { model?: string }
+  ): Promise<{ data: SyntheticMediaAnalysis; model: string }> {
+    const client = getGeminiClient();
+    const model = options?.model || GEMINI_MODELS.DEFAULT;
+
+    const contents: Array<
+      | string
+      | { inlineData: { mimeType: string; data: string } }
+      | { fileData: { fileUri: string; mimeType?: string } }
+    > = [];
+
+    if (input.mediaParts && input.mediaParts.length > 0) {
+      for (const part of input.mediaParts) {
+        if (part.inlineData) {
+          contents.push({
+            inlineData: {
+              mimeType: part.inlineData.mimeType,
+              data: part.inlineData.data,
+            },
+          });
+        } else if (part.fileUri) {
+          contents.push({
+            fileData: {
+              fileUri: part.fileUri,
+            },
+          });
+        }
+      }
+    }
+
+    const promptText =
+      input.textPrompt && input.textPrompt.trim() !== ""
+        ? input.textPrompt
+        : "Forensically inspect the media for observable visual/auditory indicators characteristic of generative AI synthesis, deepfakes, face swapping, or digital manipulation. Record factual observations.";
+
+    contents.push(promptText);
+
+    let activeModel = model;
+    let response;
+
+    try {
+      response = await client.models.generateContent({
+        model: activeModel,
+        contents,
+        config: {
+          systemInstruction: SYNTHETIC_ANALYSIS_SYSTEM_PROMPT,
+          responseMimeType: "application/json",
+          responseSchema: SYNTHETIC_ANALYSIS_JSON_SCHEMA,
+        },
+      });
+    } catch (err: unknown) {
+      const errString = String(err);
+      if (
+        (errString.includes("503") ||
+          errString.includes("UNAVAILABLE") ||
+          errString.includes("high demand")) &&
+        activeModel !== GEMINI_MODELS.FAST
+      ) {
+        activeModel = GEMINI_MODELS.FAST;
+        response = await client.models.generateContent({
+          model: activeModel,
+          contents,
+          config: {
+            systemInstruction: SYNTHETIC_ANALYSIS_SYSTEM_PROMPT,
+            responseMimeType: "application/json",
+            responseSchema: SYNTHETIC_ANALYSIS_JSON_SCHEMA,
+          },
+        });
+      } else {
+        throw err;
+      }
+    }
+
+    const rawText = response.text;
+    if (!rawText) {
+      throw new Error("Gemini returned an empty response for synthetic analysis.");
+    }
+
+    const parsed = JSON.parse(rawText);
+    const data = SyntheticMediaAnalysisSchema.parse(parsed);
 
     return { data, model: activeModel };
   }

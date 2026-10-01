@@ -4,6 +4,7 @@ import {
   MediaObservationInput,
   AtomicClaim,
   EvidenceSource,
+  SyntheticMediaAnalysis,
 } from "@/types";
 
 if (typeof window !== "undefined") {
@@ -47,6 +48,10 @@ export interface AIProvider {
     input: MediaObservationInput,
     options?: { model?: string }
   ): Promise<{ data: MediaObservations; model: string }>;
+  analyzeSyntheticMedia(
+    input: MediaObservationInput,
+    options?: { model?: string }
+  ): Promise<{ data: SyntheticMediaAnalysis; model: string }>;
   decomposeClaims(
     claimText: string,
     options?: { model?: string }

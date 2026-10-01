@@ -21,6 +21,7 @@ import {
 } from "@/types";
 import { ClaimDimensionCard } from "@/components/ClaimDimensionCard";
 import { EvidenceCard } from "@/components/EvidenceCard";
+import { SyntheticMediaCard } from "@/components/SyntheticMediaCard";
 
 // Initial sample demonstration data
 const INITIAL_DEMO_RESULT: VerificationResult = {
@@ -106,6 +107,32 @@ const INITIAL_DEMO_RESULT: VerificationResult = {
       reliabilityScore: 0.95,
     },
   ],
+  syntheticMediaAnalysis: {
+    status: "no_strong_indicators",
+    confidence: "medium",
+    indicators: [
+      {
+        category: "temporal_consistency",
+        observation:
+          "Continuous vehicle motion and fluid hydraulic displacement show physical coherence across frames without boundary jitter or warping.",
+        severity: "low",
+      },
+      {
+        category: "lighting",
+        observation:
+          "Monsoon overcast light distribution matches wet surface reflections and diffuse shadow geometry across vehicles and street signs.",
+        severity: "low",
+      },
+      {
+        category: "visual_artifact",
+        observation:
+          "Compression artifacts are consistent with standard H.264 social media re-encoding rather than generative neural synthesis anomalies.",
+        severity: "low",
+      },
+    ],
+    explanation:
+      "Forensic multimodal inspection indicates that the media exhibits natural optical, temporal, and physical properties without observable generative AI tampering. However, the media is presented with false temporal context ('today').",
+  },
   geminiModelUsed: "Google Gemini 2.5 Flash",
 };
 
@@ -488,7 +515,15 @@ export default function VerifyWorkspace() {
                   </div>
                 </div>
 
-                {/* Atomic Claims Deconstruction Section */}
+                {/* Layer 01: Synthetic Media Analysis */}
+                {result.syntheticMediaAnalysis && (
+                  <SyntheticMediaCard
+                    analysis={result.syntheticMediaAnalysis}
+                    mediaType={result.media?.type}
+                  />
+                )}
+
+                {/* Layer 02: Atomic Claims Deconstruction Section */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between border-b-2 border-black pb-2">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-black flex items-center gap-2">
