@@ -17,7 +17,7 @@ async function runTest(testName: string, claim: AtomicClaim, evidence: EvidenceS
     console.log(`-> STATUS: ${result.status}`);
     console.log(`-> EXPLANATION: ${result.explanation}`);
     console.log(`-> RELATIONSHIPS:`);
-    result.evidenceRelationships.forEach(rel => {
+    result.evidenceRelationships.forEach((rel: { evidenceId: string; relationship: string }) => {
       console.log(`     [${rel.evidenceId}]: ${rel.relationship}`);
     });
   } catch (err) {

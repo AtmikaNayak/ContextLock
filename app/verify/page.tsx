@@ -25,6 +25,7 @@ import {
 } from "@/types";
 import { ClaimDimensionCard } from "@/components/ClaimDimensionCard";
 import { EvidenceCard } from "@/components/EvidenceCard";
+import { SyntheticMediaCard } from "@/components/SyntheticMediaCard";
 
 // Demo state removed for production
 
@@ -400,6 +401,14 @@ export default function VerifyWorkspace() {
                     )}
                   </div>
                 </div>
+
+                {/* Layer 01: Synthetic Media Analysis */}
+                {result.syntheticMediaAnalysis && (
+                  <SyntheticMediaCard
+                    analysis={result.syntheticMediaAnalysis}
+                    mediaType={result.media?.type}
+                  />
+                )}
 
                 {/* Atomic Claims Deconstruction Section */}
                 <div>
