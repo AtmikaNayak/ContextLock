@@ -120,6 +120,12 @@ export interface SyntheticMediaAnalysis {
   explanation: string;
 }
 
+export interface ZkReceipt {
+  commitment: string;
+  proof: string;
+  verdict: string;
+}
+
 export interface VerificationResult {
   id: string;
   timestamp: string;
@@ -131,6 +137,7 @@ export interface VerificationResult {
   evidence: EvidenceSource[];
   syntheticMediaAnalysis?: SyntheticMediaAnalysis;
   geminiModelUsed?: string;
+  zkReceipt?: ZkReceipt;
 }
 
 // ==========================================
@@ -209,6 +216,12 @@ export const SyntheticMediaAnalysisSchema = z.object({
   explanation: z.string().describe("Balanced, objective explanation of findings without declaring absolute proof"),
 });
 
+export const ZkReceiptSchema = z.object({
+  commitment: z.string(),
+  proof: z.string(),
+  verdict: z.string(),
+});
+
 export const VerificationResultSchema = z.object({
   id: z.string(),
   timestamp: z.string(),
@@ -227,6 +240,7 @@ export const VerificationResultSchema = z.object({
   evidence: z.array(EvidenceSourceSchema),
   syntheticMediaAnalysis: SyntheticMediaAnalysisSchema.optional(),
   geminiModelUsed: z.string().optional(),
+  zkReceipt: ZkReceiptSchema.optional(),
 });
 
 export type VerifyRequest = z.infer<typeof VerifyRequestSchema>;

@@ -11,6 +11,11 @@ import {
   decomposeClaims,
 } from "@/lib/ai/provider";
 import { z } from "zod";
+import { exec } from "child_process";
+import { promisify } from "util";
+import crypto from "crypto";
+
+const execAsync = promisify(exec);
 
 function logStep(step: string, details?: unknown) {
   if (details) {
@@ -242,6 +247,42 @@ export async function POST(req: NextRequest) {
       evidence: allEvidenceSources,
       geminiModelUsed: aiModelUsed,
     };
+
+    // 8. ZK PROOF GENERATION
+    logStep("generating ZK proof");
+    try {
+      // Create numeric fields for Noir
+      // Hash strings to 32 bytes, then take first 15 bytes to ensure they fit in a Noir Field
+      const mediaHashHex = crypto.createHash('sha256').update(mediaRecord.id).digest('hex').substring(0, 30);
+      const claimHashHex = crypto.createHash('sha256').update(claim.rawText).digest('hex').substring(0, 30);
+      
+      const mediaHashField = BigInt('0x' + mediaHashHex).toString(10);
+      const claimHashField = BigInt('0x' + claimHashHex).toString(10);
+      
+      // Mapping verdict to a number
+      let verdictNum = "0";
+      if (overallContextStatus === "claim_supported") verdictNum = "1";
+      else if (overallContextStatus === "unverified") verdictNum = "2";
+      else verdictNum = "3"; // mismatch/contradicted
+
+      const nonce = Math.floor(Math.random() * 1000000).toString(10);
+
+      // Execute the prove script
+      const { stdout } = await execAsync(`npx tsx zk/scripts/prove.ts ${mediaHashField} ${claimHashField} ${verdictNum} ${nonce}`);
+      const zkRes = JSON.parse(stdout);
+      
+      verificationResult.zkReceipt = {
+        commitment: zkRes.commitment,
+        proof: zkRes.proof,
+        verdict: overallContextStatus
+      };
+      
+      logStep("ZK proof generation complete", zkRes.commitment);
+    } catch (zkErr) {
+      console.error("ZK Proof generation failed:", zkErr);
+      logStep("ZK_PROOF_FAILED", zkErr instanceof Error ? zkErr.message : String(zkErr));
+      // Continue without ZK proof if it fails (graceful degradation)
+    }
 
     // Return VerificationResult-compatible response
     logStep("final result", overallContextStatus);

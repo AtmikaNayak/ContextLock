@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
+    "@noir-lang/backend_barretenberg": "^0.36.0",
+    "@noir-lang/noir_js": "0.36.0",
+    "@noir-lang/noir_wasm": "0.36.0",
     "@supabase/supabase-js": "^2.117.2",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.11.2",
