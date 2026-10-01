@@ -13,6 +13,8 @@ import { z } from "zod";
 // Supported Media Types
 export type MediaType = "image" | "video";
 
+import type { ProcessedVideo } from "../lib/video/types";
+
 export interface MediaInput {
   id?: string;
   type: MediaType;
@@ -30,6 +32,7 @@ export interface MediaInput {
     };
     cameraModel?: string;
   };
+  processedVideo?: ProcessedVideo;
 }
 
 // Atomic Claim Dimension Classification

@@ -285,11 +285,34 @@ export async function decomposeClaims(
   return validated.claims.map((c) => createEmptyAtomicClaim(c.type, c.text));
 }
 
+import { defaultEvidenceProvider } from "./evidence/providers";
+
 /**
  * 3. retrieveEvidence()
- * Retrieves external evidence using Gemini's Google Search grounding.
+ * Retrieves external evidence using the configured EvidenceProvider (currently GDELT for free-tier).
  */
 export async function retrieveEvidence(
+  targetClaim: AtomicClaim,
+  contextClaims: AtomicClaim[],
+  options?: { model?: string; onModelUsed?: (model: string) => void }
+): Promise<import("@/types").EvidenceSource[]> {
+  try {
+    return await defaultEvidenceProvider.search({
+      claim: targetClaim,
+      relatedClaims: contextClaims,
+      maxResults: 5
+    });
+  } catch (err) {
+    console.error("Evidence retrieval provider failed:", err);
+    return [];
+  }
+}
+
+/**
+ * Legacy/Paid Gemini Grounded Search
+ * Retained for future use when quota allows.
+ */
+export async function retrieveEvidenceGeminiGrounded(
   targetClaim: AtomicClaim,
   contextClaims: AtomicClaim[],
   options?: { model?: string; onModelUsed?: (model: string) => void }
@@ -494,7 +517,7 @@ export async function testGeminiConnection(
   const startTime = Date.now();
   const testInput =
     samplePrompt ||
-    "A photo depicting urban flooding with multiple submerged cars along a road marked 'Main Street', taken during daylight with 1990s-era vehicles.";
+    "A generic photo depicting a street scene during daylight.";
 
   let executedModel = GEMINI_MODELS.DEFAULT;
   const observations = await analyzeMedia(

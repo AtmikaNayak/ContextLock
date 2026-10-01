@@ -24,8 +24,8 @@ export async function processMediaUpload(file: File, existingCaseId?: string) {
       .single();
 
     if (caseError || !caseData) {
-      console.error('Failed to create verification case:', caseError);
-      throw new Error('Failed to create verification case.');
+      console.error('Failed to create verification case:', JSON.stringify(caseError, null, 2));
+      throw new Error(`Failed to create verification case: ${JSON.stringify(caseError)}`);
     }
     caseId = caseData.id;
   }

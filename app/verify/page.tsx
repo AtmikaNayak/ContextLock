@@ -26,92 +26,7 @@ import {
 import { ClaimDimensionCard } from "@/components/ClaimDimensionCard";
 import { EvidenceCard } from "@/components/EvidenceCard";
 
-// Initial sample demonstration data to visualize layout structure
-const INITIAL_DEMO_RESULT: VerificationResult = {
-  id: "case-mangalore-flood-demo",
-  timestamp: new Date().toISOString(),
-  media: {
-    type: "video",
-    fileName: "mangalore_flood_forward.mp4",
-  },
-  claim: {
-    rawText: "This video shows today's massive flooding in Mangalore.",
-    sourcePlatform: "WhatsApp Forward",
-    claimedDate: "Today (Current)",
-    claimedLocation: "Mangalore, Karnataka",
-  },
-  contextStatus: "temporal_mismatch",
-  summaryExplanation:
-    "The video authenticates genuine severe waterlogging in Mangalore. However, investigative evidence confirms this exact recording originated during torrential rains on August 14, 2023. The temporal claim ('today') is contradicted by official weather logs and historical broadcasts.",
-  atomicClaims: [
-    {
-      id: "claim-what-01",
-      type: "what",
-      claimText: "Massive urban inundation and submerged vehicles",
-      status: "supported",
-      confidenceScore: 0.95,
-      explanation:
-        "Visual signs, vehicle submersion, and water levels match severe monsoon street inundation.",
-      evidenceIds: ["ev-01"],
-    },
-    {
-      id: "claim-where-01",
-      type: "where",
-      claimText: "Mangalore (Kottara Chowki junction)",
-      status: "supported",
-      confidenceScore: 0.92,
-      explanation:
-        "Commercial hoardings in Kannada/English and highway flyover architecture match Kottara Chowki, Mangalore.",
-      evidenceIds: ["ev-01", "ev-02"],
-    },
-    {
-      id: "claim-when-01",
-      type: "when",
-      claimText: "Happening today / current live situation",
-      status: "contradicted",
-      confidenceScore: 0.98,
-      explanation:
-        "Contradicted by archive records: video was originally published August 2023. Today's meteorological data indicates dry conditions.",
-      evidenceIds: ["ev-02", "ev-03"],
-    },
-  ],
-  evidence: [
-    {
-      id: "ev-01",
-      title: "Monsoon Inundation in Kottara Chowki: Local Report",
-      url: "https://example.com/news/mangalore-floods-august-2023",
-      source: "Coastal News Bureau",
-      publishedDate: "2023-08-14",
-      snippet:
-        "Water levels rose rapidly near Kottara Chowki following torrential rainfall on August 14, 2023, inundating major road arteries.",
-      relationship: "supports",
-      reliabilityScore: 0.92,
-    },
-    {
-      id: "ev-02",
-      title: "Fact Check: 2023 Mangalore Flood Video Resurfaces as Current",
-      url: "https://example.com/factcheck/mangalore-flood-video-2023",
-      source: "Independent Fact Checkers",
-      publishedDate: "2024-06-10",
-      snippet:
-        "A recurring video claiming to show fresh flooding in coastal Karnataka is actually archive footage from the 2023 monsoon season.",
-      relationship: "contradicts",
-      reliabilityScore: 0.97,
-    },
-    {
-      id: "ev-03",
-      title: "Mangalore Daily Weather & Precipitation Log",
-      url: "https://example.com/weather/mangalore-today",
-      source: "State Disaster Monitoring Center",
-      publishedDate: new Date().toISOString().split("T")[0],
-      snippet:
-        "Clear to partly cloudy skies recorded across Mangalore urban limits. No flood warnings in effect.",
-      relationship: "contradicts",
-      reliabilityScore: 0.95,
-    },
-  ],
-  geminiModelUsed: "Gemini 2.5 Flash (Verification Foundation Contract)",
-};
+// Demo state removed for production
 
 const contextStatusDisplay: Record<
   ContextStatus,
@@ -157,23 +72,26 @@ const contextStatusDisplay: Record<
 
 export default function VerifyWorkspace() {
   const [mediaType, setMediaType] = useState<MediaType>("image");
-  const [claimText, setClaimText] = useState(
-    "This video shows today's massive flooding in Mangalore."
-  );
-  const [sourcePlatform, setSourcePlatform] = useState("WhatsApp Forward");
-  const [claimedLocation, setClaimedLocation] = useState("Mangalore, Karnataka");
-  const [claimedDate, setClaimedDate] = useState("Today");
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(
-    "mangalore_flood_forward.mp4"
-  );
+  const [claimText, setClaimText] = useState("");
+  const [sourcePlatform, setSourcePlatform] = useState("");
+  const [claimedLocation, setClaimedLocation] = useState("");
+  const [claimedDate, setClaimedDate] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [mediaId, setMediaId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [result, setResult] = useState<VerificationResult | null>(INITIAL_DEMO_RESULT);
+  const [result, setResult] = useState<VerificationResult | null>(null);
 
   const handleFileUpload = async (file: File) => {
+    if (file.type.startsWith("video/") && file.size > 100 * 1024 * 1024) {
+      setUploadError(
+        "Video exceeds the current 100 MB limit. Large-video preprocessing will allow ContextLock to analyze longer videos by extracting relevant frames, audio, and metadata."
+      );
+      return;
+    }
+
     setSelectedFileName(file.name);
     setIsUploading(true);
     setUploadError(null);
@@ -207,39 +125,45 @@ export default function VerifyWorkspace() {
     }
   };
 
-  const handleSimulateVerification = async () => {
+  const handleVerification = async () => {
+    if (!caseId || !mediaId) {
+      console.error("Please upload media first");
+      return;
+    }
+
     setIsVerifying(true);
 
+    const claim = {
+      rawText: claimText,
+      sourcePlatform,
+      claimedDate,
+      claimedLocation,
+    };
+
+    console.log("INVESTIGATE CLICKED");
+    console.log("VERIFY PAYLOAD", { caseId, mediaId, claim });
+
     try {
-      // Calls the Route Handler /api/verify
       const response = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          media: {
-            id: mediaId || undefined,
-            type: mediaType,
-            fileName: selectedFileName || "uploaded-media.jpg",
-          },
-          claim: {
-            rawText: claimText,
-            sourcePlatform,
-            claimedDate,
-            claimedLocation,
-          },
+          caseId,
+          mediaId,
+          claim,
         }),
       });
+
+      console.log("VERIFY RESPONSE", response.status);
 
       if (response.ok) {
         const data: VerificationResult = await response.json();
         setResult(data);
       } else {
-        // Fallback to local demo state if API encountered issue
-        setResult(INITIAL_DEMO_RESULT);
+        console.error("Verification API failed with status:", response.status);
       }
     } catch (err) {
       console.error("Failed to query verification API:", err);
-      setResult(INITIAL_DEMO_RESULT);
     } finally {
       setIsVerifying(false);
     }
@@ -264,13 +188,7 @@ export default function VerifyWorkspace() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setResult(INITIAL_DEMO_RESULT)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/60 hover:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Reset Demo Example</span>
-            </button>
+            {/* Buttons can go here if needed in future */}
           </div>
         </div>
 
@@ -373,7 +291,7 @@ export default function VerifyWorkspace() {
                     rows={3}
                     value={claimText}
                     onChange={(e) => setClaimText(e.target.value)}
-                    placeholder="e.g. 'This video shows today's massive flooding in Mangalore.'"
+                    placeholder="e.g. This video shows today's massive flooding in Mangalore."
                     className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
                 </div>
@@ -421,7 +339,7 @@ export default function VerifyWorkspace() {
                 {/* Primary Action Button */}
                 <button
                   type="button"
-                  onClick={handleSimulateVerification}
+                  onClick={handleVerification}
                   disabled={isVerifying}
                   className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
                 >

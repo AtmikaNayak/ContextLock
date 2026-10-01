@@ -24,9 +24,18 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     let status = 500;
     
-    // Determine status based on message
+    // Determine status and structure based on message
     if (message.includes('Unsupported file type')) status = 400;
-    if (message.includes('exceeds')) status = 413;
+    if (message.includes('exceeds')) {
+      status = 413;
+      if (message.includes('Video')) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'VIDEO_TOO_LARGE', 
+          message: 'Video exceeds the current 100 MB limit. Large-video preprocessing will allow ContextLock to analyze longer videos by extracting relevant frames, audio, and metadata.' 
+        }, { status });
+      }
+    }
     
     return NextResponse.json({ success: false, error: message }, { status });
   }
