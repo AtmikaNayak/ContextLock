@@ -4,22 +4,38 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  HelpCircle,
-  Layers,
   ArrowRight,
   Sparkles,
   Split,
-  FileCheck2,
-  Calendar,
-  MapPin,
-  Clock,
 } from "lucide-react";
+import ParticleDrift from "@/components/originkit/particle-drift";
 
 export default function HomePage() {
   return (
-    <div className="relative overflow-hidden py-12 md:py-20">
-      {/* Background radial glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[350px] bg-gradient-to-tr from-cyan-600/15 via-blue-600/10 to-indigo-600/15 blur-3xl pointer-events-none rounded-full" />
+    <div className="relative overflow-hidden py-12 md:py-20 min-h-screen">
+      {/* OriginKit Particle Drift Background Layer */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        <ParticleDrift
+          background="#030712"
+          baseColor="#38bdf8"
+          accentColor="#facc15"
+          density={140}
+          dotSize={3.5}
+          speed={18}
+          direction={195}
+          hover={160}
+          linkDistance={135}
+          linkThickness={0.75}
+          className="w-full h-full"
+        />
+
+        {/* Atmospheric Blue Depth & Obsidian Vignette Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/25 via-transparent to-slate-950/90 pointer-events-none" />
+        <div className="absolute top-1/6 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[380px] bg-gradient-to-tr from-cyan-600/12 via-blue-600/10 to-indigo-600/12 blur-3xl pointer-events-none rounded-full" />
+      </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Track Badge */}
