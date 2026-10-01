@@ -10,8 +10,6 @@ import {
   Database,
   Layers,
   FileCheck2,
-  FileText,
-  Barcode,
   Terminal,
 } from "lucide-react";
 import { TypewriterText } from "@/components/TypewriterText";

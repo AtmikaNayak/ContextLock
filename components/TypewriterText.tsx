@@ -21,10 +21,9 @@ export function TypewriterText({
   const [isDone, setIsDone] = useState(false);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
     let intervalId: NodeJS.Timeout;
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       let index = 0;
       intervalId = setInterval(() => {
         index++;

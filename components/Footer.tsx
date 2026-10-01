@@ -1,4 +1,4 @@
-import { ShieldCheck, ArrowUpRight } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export function Footer() {
   return (
