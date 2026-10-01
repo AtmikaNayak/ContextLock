@@ -4,7 +4,10 @@ import {
   MediaObservations,
   MediaObservationsSchema,
   MediaObservationInput,
+  AtomicClaim,
 } from "@/types";
+import { z } from "zod";
+import { CLAIM_DECOMPOSITION_PROMPT, createEmptyAtomicClaim } from "./claims";
 
 /**
  * ContextLock Gemini Service Layer
@@ -180,39 +183,106 @@ export async function analyzeMedia(
   return MediaObservationsSchema.parse(parsed);
 }
 
-/**
- * 2. extractClaims()
- * Foundation stub for upcoming claim extraction from accompanying captions/posts.
- * To be expanded in the claim analysis milestone.
- */
-export async function extractClaims(
-  rawText: string
-): Promise<{ rawClaim: string; extractedStatements: string[] }> {
-  // Service stub prepared for the claim extraction pipeline
-  return {
-    rawClaim: rawText,
-    extractedStatements: [rawText.trim()],
-  };
-}
+export const CLAIM_DECOMPOSITION_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    claims: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["what", "where", "when", "who", "other"] },
+          text: { type: "string" },
+        },
+        required: ["type", "text"],
+      },
+    },
+  },
+  required: ["claims"],
+};
+
+const GeminiDecompositionSchema = z.object({
+  claims: z.array(
+    z.object({
+      type: z.enum(["what", "where", "when", "who", "other"]),
+      text: z.string(),
+    })
+  ),
+});
 
 /**
- * 3. decomposeClaims()
- * Foundation stub for breaking claims into atomic WHAT, WHERE, WHEN, WHO dimensions.
- * To be expanded in the claim decomposition milestone.
+ * 2. decomposeClaims()
+ * Breaks claims into atomic WHAT, WHERE, WHEN, WHO dimensions.
  */
 export async function decomposeClaims(
-  claimText: string
-): Promise<{ claim: string; dimensions: Record<string, string> }> {
-  // Service stub prepared for atomic decomposition
-  return {
-    claim: claimText,
-    dimensions: {
-      what: claimText,
-      where: "Pending retrieval",
-      when: "Pending retrieval",
-      who: "Pending retrieval",
-    },
-  };
+  claimText: string,
+  options?: { model?: string; onModelUsed?: (model: string) => void }
+): Promise<AtomicClaim[]> {
+  const client = getGeminiClient();
+  const model = options?.model || GEMINI_MODELS.DEFAULT;
+
+  const promptText = `Decompose the following user claim into independently verifiable atomic claims. Do not invent new facts. Split compound claims if needed. If no factual claim is made, return an empty array.\n\nUSER CLAIM: "${claimText}"`;
+
+  let response;
+  let activeModel = model;
+
+  try {
+    response = await client.models.generateContent({
+      model: activeModel,
+      contents: [promptText],
+      config: {
+        systemInstruction: CLAIM_DECOMPOSITION_PROMPT,
+        responseMimeType: "application/json",
+        responseSchema: CLAIM_DECOMPOSITION_JSON_SCHEMA,
+      },
+    });
+  } catch (err: unknown) {
+    const errString = String(err);
+    if (
+      (errString.includes("503") ||
+        errString.includes("429") ||
+        errString.includes("RESOURCE_EXHAUSTED") ||
+        errString.includes("UNAVAILABLE") ||
+        errString.includes("high demand")) &&
+      activeModel !== GEMINI_MODELS.FAST
+    ) {
+      console.warn(
+        `[ContextLock] Model ${activeModel} experiencing high demand; falling back to ${GEMINI_MODELS.FAST}.`
+      );
+      activeModel = GEMINI_MODELS.FAST;
+      response = await client.models.generateContent({
+        model: activeModel,
+        contents: [promptText],
+        config: {
+          systemInstruction: CLAIM_DECOMPOSITION_PROMPT,
+          responseMimeType: "application/json",
+          responseSchema: CLAIM_DECOMPOSITION_JSON_SCHEMA,
+        },
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  const rawText = response.text;
+  if (!rawText) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    throw new Error(
+      `Failed to parse Gemini response as JSON: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  options?.onModelUsed?.(activeModel);
+
+  const validated = GeminiDecompositionSchema.parse(parsed);
+
+  return validated.claims.map((c) => createEmptyAtomicClaim(c.type, c.text));
 }
 
 /**
