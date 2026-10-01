@@ -183,6 +183,87 @@ export async function analyzeMedia(
   return MediaObservationsSchema.parse(parsed);
 }
 
+export const SYNTHETIC_ANALYSIS_SYSTEM_PROMPT = `
+  You are the Synthetic Media Forensics perception engine for ContextLock, an investigative verification platform.
+  Your task is to inspect the provided image or video frames for observable technical anomalies or indicators 
+characteristic of generative AI synthesis, deepfakes, face swapping, diffusion model artifacts, or digital tampering.
+  
+  CRITICAL PRINCIPLES:
+  1. SEPARATE OBSERVATION FROM CONCLUSION:
+     - Carefully record specific, observable physical, optical, and anatomical indicators.
+     - Differentiate between:
+       a) OBSERVATION (e.g., "Irregular pupil geometry and asymmetrical reflections in right eye")
+       b) CONCLUSION (e.g., "This image is AI-generated")
+     - Do NOT declare absolute or definitive scientific certainty (never state "100% fake", "proven AI", or 
+"definitely authentic").
+     - Frame the status strictly as:
+       * "synthetic_indicators" (observable anomalies consistent with generative AI / synthetic media are present)
+       * "no_strong_indicators" (no obvious generative anomalies or tampering cues detected on visual inspection)
+       * "inconclusive" (media quality, heavy compression, low resolution, or ambiguity prevents clear determination)
+  
+  2. FORENSIC CATEGORIES TO INSPECT:
+     - visual_artifact: Unnatural blurring, pixelation boundaries, diffusion melting, repeating texture patterns, edge halos.
+     - facial_consistency: Unnatural skin texture (over-smoothed waxy look), blending at hair/ears, irregular teeth/eyes, pupil shape inconsistencies.
+     - lighting: Illogical light sources, inconsistent shadow angles, missing contact shadows.
+     - geometry: Impossible perspective lines, distorted architectural angles, warped background objects.
+     - text: Malformed, gibberish, or pseudoglyphic text rendering common in image generators.
+     - reflection: Inconsistent catchlights in eyes, missing or conflicting reflections on wet/shiny surfaces or mirrors.
+     - temporal_consistency: (For video) Frame-to-frame warping, morphing, jittering boundaries, identity drift across frames.
+     - audio_visual: (If audio present) Desynchronized lip movement, robotic timbre, unnatural cadence.
+     - other: Any other distinct physical or digital anomalies.
+  
+  3. BALANCED EXPLANATION:
+     - Provide a measured, objective summary of the analysis explaining why the status and confidence were assigned.
+     - If genuine compression or camera artifacts might explain the observation, note that clearly.
+`;
+
+export const SYNTHETIC_ANALYSIS_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    status: {
+      type: "string",
+      enum: ["synthetic_indicators", "no_strong_indicators", "inconclusive"],
+      description: "Forensic assessment category",
+    },
+    confidence: {
+      type: "string",
+      enum: ["low", "medium", "high"],
+      description: "Confidence level of the assessment based on visual clarity and signal strength",
+    },
+    indicators: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: [
+              "visual_artifact",
+              "facial_consistency",
+              "lighting",
+              "geometry",
+              "text",
+              "reflection",
+              "temporal_consistency",
+              "audio_visual",
+              "other",
+            ],
+          },
+          observation: { type: "string" },
+          severity: { type: "string", enum: ["low", "medium", "high"] },
+        },
+        required: ["category", "observation", "severity"],
+      },
+      description: "List of observable forensic clues or anomalies detected",
+    },
+    explanation: {
+      type: "string",
+      description: "Objective explanation of the forensic analysis",
+    },
+  },
+  required: ["status", "confidence", "indicators", "explanation"],
+};
+
 export const CLAIM_DECOMPOSITION_JSON_SCHEMA = {
   type: "object",
   properties: {
