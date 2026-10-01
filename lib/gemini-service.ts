@@ -387,20 +387,96 @@ export async function retrieveEvidence(
   return sources;
 }
 
+export const REASONING_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    status: { type: "string", enum: ["supported", "contradicted", "insufficient"] },
+    explanation: { type: "string" },
+    evidenceRelationships: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          evidenceId: { type: "string" },
+          relationship: { type: "string", enum: ["supports", "contradicts", "context", "unrelated"] }
+        },
+        required: ["evidenceId", "relationship"]
+      }
+    }
+  },
+  required: ["status", "explanation", "evidenceRelationships"]
+};
+
+export const ReasoningResultSchema = z.object({
+  status: z.enum(["supported", "contradicted", "insufficient"]),
+  explanation: z.string(),
+  evidenceRelationships: z.array(z.object({
+    evidenceId: z.string(),
+    relationship: z.enum(["supports", "contradicts", "context", "unrelated"])
+  }))
+});
+
 /**
  * 4. analyzeEvidence()
- * Foundation stub for comparing retrieved external evidence against atomic claims.
+ * Evaluates the relationship between an atomic claim and retrieved evidence.
  * Keeps external evidence retrieval strictly separate from Gemini reasoning.
  */
 export async function analyzeEvidence(
-  claimText: string,
-  evidenceSnippet: string
-): Promise<{ relationship: "supports" | "contradicts" | "insufficient"; explanation: string }> {
-  // Service stub prepared for comparative reasoning
-  return {
-    relationship: "insufficient",
-    explanation: `Comparative analysis between claim ("${claimText.slice(0, 40)}...") and retrieved evidence ("${evidenceSnippet.slice(0, 40)}...") pending pipeline activation.`,
-  };
+  claim: AtomicClaim,
+  evidence: import("@/types").EvidenceSource[],
+  relatedClaims: AtomicClaim[] = []
+): Promise<z.infer<typeof ReasoningResultSchema>> {
+  if (evidence.length === 0) {
+    return {
+      status: "insufficient",
+      explanation: "No evidence was retrieved to verify this claim.",
+      evidenceRelationships: []
+    };
+  }
+
+  const contextStr = relatedClaims.length > 0
+    ? `\n\nContext related to the claim:\n${relatedClaims.map(c => `- ${c.type.toUpperCase()}: ${c.claimText}`).join("\n")}`
+    : "";
+
+  const evidenceStr = evidence.map((e) => `[Evidence ID: ${e.id}]\nSource: ${e.source}\nTitle: ${e.title}\nURL: ${e.url}\n${e.snippet}`).join("\n\n");
+
+  const prompt = `You are a strict, objective fact-checking system.
+Your task is to evaluate a specific claim against the provided evidence.
+
+Target Claim (${claim.type.toUpperCase()}): "${claim.claimText}"${contextStr}
+
+Supplied Evidence:
+${evidenceStr}
+
+Instructions:
+1. Determine if the evidence supports, contradicts, or is insufficient to verify the target claim.
+2. If evidence is vague, off-topic, or missing required specifics (like exact location or time), return "insufficient".
+3. Evaluate EACH piece of evidence and map its ID to one of: "supports", "contradicts", "context", "unrelated".
+4. Provide a concise explanation that explicitly references the evidence by ID or title.
+5. Do NOT invent new evidence. Reason ONLY from the supplied evidence.
+6. Do NOT return citations that are not in the supplied evidence.`;
+
+  const { generateStructured, GEMINI_MODELS } = await import("./gemini");
+  
+  const result = await generateStructured({
+    prompt,
+    schema: ReasoningResultSchema,
+    jsonSchema: REASONING_JSON_SCHEMA,
+    // Use REASONING model if available, else DEFAULT
+    model: GEMINI_MODELS.DEFAULT, 
+  });
+
+  // Validate and filter evidence IDs
+  const validEvidenceIds = new Set(evidence.map(e => e.id));
+  result.evidenceRelationships = result.evidenceRelationships.filter(rel => {
+    if (!validEvidenceIds.has(rel.evidenceId)) {
+      console.warn(`[ContextLock] Reasoning returned unknown evidence ID: ${rel.evidenceId}. Filtering out.`);
+      return false;
+    }
+    return true;
+  });
+
+  return result;
 }
 
 /**
