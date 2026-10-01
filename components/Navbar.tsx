@@ -20,16 +20,7 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* Center / Editorial Metadata */}
-        <div className="hidden md:flex items-center gap-2 font-mono text-xs text-black">
-          <span className="border border-black bg-white px-2 py-1 font-bold">
-            GEMINI HACK DAYS &apos;26
-          </span>
-          <span className="border border-black bg-[#FF3B00] text-black px-2 py-1 font-bold">
-            TRACK: TRUST IN A SYNTHETIC WORLD
-          </span>
-        </div>
-
+        
         {/* Navigation Actions */}
         <nav className="flex items-center gap-3 font-mono">
           <Link

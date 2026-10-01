@@ -10,129 +10,175 @@ import {
   Database,
   Layers,
   FileCheck2,
+  FileText,
+  Barcode,
+  Terminal,
 } from "lucide-react";
-import ParticleDrift from "@/components/originkit/particle-drift";
+import { TypewriterText } from "@/components/TypewriterText";
 
 export default function HomePage() {
   return (
-    <div className="py-8 sm:py-12">
+    <div className="py-8 sm:py-12 overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
-        {/* Newspaper Issue Header / Top Metadata Bar */}
-        <div className="border-b-2 border-black pb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-mono font-bold uppercase tracking-wider">
+        {/* Animated Top Header / Metadata Bar */}
+        <div className="relative pb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-mono font-bold uppercase tracking-wider">
           <div className="flex items-center gap-3">
-            <span className="bg-black text-white px-2 py-0.5">ISSUE 01</span>
-            <span>GOOGLE GEMINI HACK DAYS 2026</span>
-            <span className="hidden sm:inline">&bull;</span>
-            <span className="hidden sm:inline">TRACK: TRUST IN A SYNTHETIC WORLD</span>
+            <span className="bg-black text-white px-2 py-0.5">
+              <TypewriterText text="ISSUE 01" delay={50} speed={25} />
+            </span>
+            
           </div>
           <div className="flex items-center gap-2">
-            <span className="border border-black bg-white px-2 py-0.5">DISPATCH_STATUS: ACTIVE</span>
-            <span className="bg-[#FF3B00] text-black px-2 py-0.5">SECURITY_LEVEL: 0</span>
+            <span className="border border-black bg-white px-2 py-0.5">
+              <TypewriterText text="DISPATCH_STATUS: ACTIVE" delay={450} speed={15} />
+            </span>
+            <span className="bg-[#FF3B00] text-black px-2 py-0.5">
+              <TypewriterText text="SECURITY_LEVEL: 0" delay={600} speed={15} />
+            </span>
           </div>
+
+          {/* Animated 2px Divider Line Drawing In */}
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black animate-draw-x" />
         </div>
 
-        {/* Hero Section: Strict Left-Alignment & Massive Aggressive Headline */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start border-b-2 border-black pb-12">
-          <div className="lg:col-span-7 space-y-6 text-left">
-            <div className="inline-block border border-black bg-white px-3 py-1 text-xs font-mono font-bold uppercase tracking-widest text-black">
-              [ MANIFESTO // MEDIA CONTEXT AUDIT ]
+        {/* Hero Section: Staggered Mask Reveals & Balanced Editorial Dossier */}
+        <section className="relative grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pb-12">
+          {/* Left Column: Headlines & Manifesto (7 cols) */}
+          <div className="lg:col-span-7 space-y-6 text-left flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="inline-block border border-black bg-white px-3 py-1 text-xs font-mono font-bold uppercase tracking-widest text-black">
+                [ MANIFESTO // MEDIA CONTEXT AUDIT ]
+              </div>
+
+              {/* Staggered Mask Reveal for Massive Headline */}
+              <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl font-black uppercase tracking-tight text-black leading-[0.9]">
+                <span className="block overflow-hidden py-1">
+                  <span className="animate-mask-1">Real Media.</span>
+                </span>
+                <span className="block overflow-hidden py-1">
+                  <span className="animate-mask-2 text-[#FF3B00] underline decoration-4 underline-offset-4">
+                    False Context.
+                  </span>
+                </span>
+              </h1>
+
+              {/* Delayed Body Copy Animation */}
+              <div className="border-l-4 border-black pl-4 py-1 space-y-2 animate-fade-delayed">
+                <p className="font-serif text-xl sm:text-2xl font-bold text-black leading-snug">
+                  We don&apos;t just verify whether pixels are synthetic. We verify whether the story told about them is true.
+                </p>
+                <p className="font-mono text-xs sm:text-sm text-black leading-relaxed">
+                  Misinformation rarely needs deepfakes. Authentic footage from 2021 forwarded as &ldquo;happening today&rdquo; bypasses every conventional pixel detector. ContextLock deconstructs claims into atomic components (What, Where, When, Who) and cross-references external ground truth using Google Gemini.
+                </p>
+              </div>
             </div>
 
-            <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl font-black uppercase tracking-tight text-black leading-[0.9]">
-              Real Media.
-              <br />
-              <span className="text-[#FF3B00] underline decoration-4 underline-offset-4">
-                False Context.
-              </span>
-            </h1>
+            {/* Brutalist Action Bar & Metrics with Delayed Fade */}
+            <div className="space-y-4 pt-2 animate-fade-delayed-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 font-mono">
+                <Link
+                  href="/verify"
+                  className="inline-flex items-center justify-center gap-3 border-2 border-black bg-black hover:bg-[#FF3B00] text-white hover:text-black px-6 py-4 text-sm font-bold uppercase tracking-wider transition-none"
+                >
+                  <Search className="h-4 w-4" />
+                  <span>Launch Verification Engine</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
 
-            <div className="border-l-4 border-black pl-4 py-1 space-y-2">
-              <p className="font-serif text-xl sm:text-2xl font-bold text-black leading-snug">
-                We don&apos;t just verify whether pixels are synthetic. We verify whether the story told about them is true.
-              </p>
-              <p className="font-mono text-xs sm:text-sm text-black leading-relaxed">
-                Misinformation rarely needs deepfakes. Authentic footage from 2021 forwarded as &ldquo;happening today&rdquo; bypasses every conventional pixel detector. ContextLock deconstructs claims into atomic components (What, Where, When, Who) and cross-references external ground truth using Google Gemini.
-              </p>
+                <a
+                  href="#thesis"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-black bg-white hover:bg-black text-black hover:text-white px-5 py-4 text-sm font-bold uppercase tracking-wider transition-none"
+                >
+                  <span>Read The Thesis</span>
+                </a>
+              </div>
+
+              {/* Stark Monospace Metric Strip */}
+              <div className="grid grid-cols-3 gap-2 border border-black bg-white p-3 font-mono text-left">
+                <div>
+                  <span className="text-[10px] text-neutral-600 uppercase block">CORE INSIGHT</span>
+                  <strong className="text-xs uppercase text-black">Real ≠ True</strong>
+                </div>
+                <div className="border-l border-black pl-3">
+                  <span className="text-[10px] text-neutral-600 uppercase block">DECOMPOSITION</span>
+                  <strong className="text-xs uppercase text-black">4 Dimensions</strong>
+                </div>
+                <div className="border-l border-black pl-3">
+                  <span className="text-[10px] text-neutral-600 uppercase block">REASONING</span>
+                  <strong className="text-xs uppercase text-[#FF3B00]">Gemini 2.5 Flash</strong>
+                </div>
+              </div>
             </div>
+          </div>
 
-            {/* Brutalist Action Bar */}
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 font-mono">
-              <Link
-                href="/verify"
-                className="inline-flex items-center justify-center gap-3 border-2 border-black bg-black hover:bg-[#FF3B00] text-white hover:text-black px-6 py-4 text-sm font-bold uppercase tracking-wider transition-none"
-              >
-                <Search className="h-4 w-4" />
-                <span>Launch Verification Engine</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-
-              <a
-                href="#thesis"
-                className="inline-flex items-center justify-center gap-2 border-2 border-black bg-white hover:bg-black text-black hover:text-white px-5 py-4 text-sm font-bold uppercase tracking-wider transition-none"
-              >
-                <span>Read The Thesis</span>
-              </a>
-            </div>
-
-            {/* Stark Monospace Metric Strip */}
-            <div className="grid grid-cols-3 gap-2 border border-black bg-white p-3 font-mono text-left">
+          {/* Right Column: Balanced Editorial Dossier & Pull-Quote (5 cols) */}
+          <div className="lg:col-span-5 flex flex-col justify-between border-2 border-black bg-white p-6 space-y-6 font-mono text-left animate-fade-delayed">
+            {/* Top Dossier Header with Barcode */}
+            <div className="border-b-2 border-black pb-4 flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-neutral-600 uppercase block">CORE INSIGHT</span>
-                <strong className="text-xs uppercase text-black">Real ≠ True</strong>
+                <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest block">
+                  INDEX // CASE REGISTRY
+                </span>
+                <span className="font-bold text-xs uppercase tracking-wider text-black">
+                  DOSSIER #2026-CTX-09
+                </span>
               </div>
-              <div className="border-l border-black pl-3">
-                <span className="text-[10px] text-neutral-600 uppercase block">DECOMPOSITION</span>
-                <strong className="text-xs uppercase text-black">4 Dimensions</strong>
+              <div className="flex items-center gap-1 font-mono text-xs font-black tracking-tighter">
+                <span className="tracking-[2px]">||| | || |||| |</span>
               </div>
-              <div className="border-l border-black pl-3">
-                <span className="text-[10px] text-neutral-600 uppercase block">REASONING</span>
-                <strong className="text-xs uppercase text-[#FF3B00]">Gemini 2.5 Flash</strong>
+            </div>
+
+            {/* Massive Editorial Serif Pull-Quote */}
+            <div className="bg-[#F4F1EA] p-5 border border-black space-y-3">
+              <span className="text-3xl font-serif font-black leading-none text-black">&ldquo;</span>
+              <p className="font-serif text-xl sm:text-2xl font-bold text-black leading-snug -mt-2">
+                When authentic media carries a forged narrative, pixels don&apos;t lie—the context does.
+              </p>
+              <div className="pt-2 border-t border-black/40 flex items-center justify-between text-[11px] font-mono text-neutral-700 font-bold uppercase">
+                <span>&bull; FORENSIC OBSERVATION</span>
+                <span>TEAM A² DISPATCH</span>
               </div>
+            </div>
+
+            {/* Structured Table of Contents / Forensic Matrix */}
+            <div className="space-y-2 text-xs">
+              <div className="border-b border-black pb-1 flex items-center justify-between font-bold uppercase text-neutral-600 text-[10px]">
+                <span>VECTOR INDEX</span>
+                <span>SURVEILLANCE STATUS</span>
+              </div>
+
+              <div className="p-2 border border-black bg-white flex items-center justify-between">
+                <span className="font-bold">01 // TEMPORAL RECYCLING</span>
+                <span className="bg-black text-white px-1.5 py-0.5 text-[10px] font-bold">DETECTED</span>
+              </div>
+
+              <div className="p-2 border border-black bg-white flex items-center justify-between">
+                <span className="font-bold">02 // GEOGRAPHIC HIJACK</span>
+                <span className="bg-[#FF3B00] text-black px-1.5 py-0.5 text-[10px] font-bold">FLAGGED</span>
+              </div>
+
+              <div className="p-2 border border-black bg-white flex items-center justify-between">
+                <span className="font-bold">03 // ATOMIC DECOMPOSITION</span>
+                <span className="border border-black bg-white text-black px-1.5 py-0.5 text-[10px] font-bold">ACTIVE</span>
+              </div>
+            </div>
+
+            {/* Bottom Telemetry Stamp */}
+            <div className="pt-3 border-t-2 border-black flex items-center justify-between text-[10px] font-mono font-bold text-black uppercase">
+              <span className="flex items-center gap-1.5">
+                <Terminal className="h-3 w-3 text-[#FF3B00]" />
+                GROUNDING: GOOGLE SEARCH ONLINE
+              </span>
+              <span>VER: 2.5-FLASH</span>
             </div>
           </div>
 
-          {/* Right Column: Contained Particle Drift Technical Exhibit */}
-          <div className="lg:col-span-5 space-y-3">
-            <div className="border-2 border-black bg-white p-1">
-              <div className="border-b border-black bg-black text-white px-3 py-1.5 flex items-center justify-between text-xs font-mono">
-                <span className="font-bold tracking-wider">FIG 01. SYNTHETIC_DRIFT_NODE_SIM</span>
-                <span className="text-[#FDFF00] font-mono text-[10px]">[LIVE DENSITY: 400]</span>
-              </div>
-
-              {/* Exact Screenshot Props Particle Drift Canvas */}
-              <div className="relative h-[340px] sm:h-[400px] w-full border border-black overflow-hidden bg-[#030509]">
-                <ParticleDrift
-                  background="#030509"
-                  baseColor="#FFFFFF"
-                  accentColor="#FDFF00"
-                  density={400}
-                  dotSize={6}
-                  speed={50}
-                  direction={0}
-                  hover={200}
-                  linkDistance={230}
-                  linkThickness={1}
-                  className="w-full h-full"
-                />
-
-                {/* Overlaid Brutalist Grid Reticle */}
-                <div className="absolute top-2 left-2 border border-white/40 bg-black/80 px-2 py-1 text-[9px] font-mono text-white pointer-events-none">
-                  X_AXIS: 0.00 // LINK_THICK: 1.0px
-                </div>
-                <div className="absolute bottom-2 right-2 border border-white/40 bg-black/80 px-2 py-1 text-[9px] font-mono text-[#FDFF00] pointer-events-none">
-                  HOVER_RAD: 200% // SPEED: 50
-                </div>
-              </div>
-
-              <div className="p-2 bg-[#F4F1EA] text-[11px] font-mono text-black border-t border-black leading-tight">
-                <strong>EXHIBIT SPECIFICATION:</strong> Interactive claim graph topology simulation. Nodes represent atomic sub-claims; yellow linkages activate on contextual inspection.
-              </div>
-            </div>
-          </div>
+          {/* Animated 2px Bottom Divider Line */}
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black animate-draw-x-delayed" />
         </section>
 
         {/* Section: The Twist / Why Real vs Fake Classification Fails */}
-        <section id="thesis" className="space-y-6 pt-4 border-b-2 border-black pb-12">
+        <section id="thesis" className="relative space-y-6 pt-4 pb-12">
           <div className="text-left max-w-3xl space-y-2">
             <div className="inline-block border border-black bg-[#FF3B00] text-black px-2 py-0.5 text-xs font-mono font-bold uppercase">
               THE FUNDAMENTAL TWIST
@@ -222,7 +268,7 @@ export default function HomePage() {
                     </div>
 
                     <div className="border border-black bg-black text-white p-2 flex items-center justify-between">
-                      <span className="font-bold text-[#FDFF00]">WHEN: Today (Current)</span>
+                      <span className="font-bold text-[#FF3B00]">WHEN: Today (Current)</span>
                       <span className="border border-white bg-[#FF3B00] text-black px-1.5 py-0.5 text-[10px] font-bold flex items-center gap-1">
                         <XCircle className="h-3 w-3 text-black" /> CONTRADICTED
                       </span>
@@ -231,7 +277,7 @@ export default function HomePage() {
 
                   <div className="border-t border-black pt-2 flex items-center justify-between text-xs">
                     <span className="font-bold uppercase text-neutral-600">SYNTHESIS:</span>
-                    <span className="font-bold uppercase bg-black text-[#FDFF00] px-2 py-0.5">
+                    <span className="font-bold uppercase bg-black text-[#FF3B00] px-2 py-0.5">
                       TEMPORAL MISMATCH (AUGUST 2023)
                     </span>
                   </div>
@@ -254,6 +300,9 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+
+          {/* Animated 2px Bottom Divider Line */}
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black animate-draw-x-delayed" />
         </section>
 
         {/* Section: Architecture Pipeline */}
@@ -351,7 +400,7 @@ export default function HomePage() {
           {/* Bottom CTA Strip */}
           <div className="border-2 border-black bg-black text-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono">
             <div className="space-y-1 text-left">
-              <span className="text-xs text-[#FDFF00] font-bold uppercase tracking-widest block">
+              <span className="text-xs text-[#FF3B00] font-bold uppercase tracking-widest block">
                 [ READY FOR VERIFICATION ]
               </span>
               <h3 className="font-serif text-2xl sm:text-3xl font-bold uppercase text-white">
@@ -372,4 +421,5 @@ export default function HomePage() {
     </div>
   );
 }
+
 
