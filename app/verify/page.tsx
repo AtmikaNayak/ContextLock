@@ -7,67 +7,69 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
   HelpCircle,
-  Sparkles,
-  Link as LinkIcon,
   RefreshCw,
   Clock,
   Layers,
-  ArrowRight,
   ShieldAlert,
+  XCircle,
 } from "lucide-react";
 import {
   VerificationResult,
   MediaType,
   ContextStatus,
-  ClaimVerificationStatus,
 } from "@/types";
 import { ClaimDimensionCard } from "@/components/ClaimDimensionCard";
 import { EvidenceCard } from "@/components/EvidenceCard";
 import { SyntheticMediaCard } from "@/components/SyntheticMediaCard";
 
-// Demo state removed for production
+// Initial state is null
 
 const contextStatusDisplay: Record<
   ContextStatus,
-  { label: string; description: string; badgeClass: string; icon: React.ReactNode }
+  { label: string; description: string; badgeBg: string; textCol: string; icon: React.ReactNode }
 > = {
   temporal_mismatch: {
-    label: "Temporal Mismatch",
+    label: "TEMPORAL MISMATCH",
     description: "The media is authentic, but it is an older recording being presented as current.",
-    badgeClass: "bg-amber-950/60 text-amber-300 border-amber-500/40",
-    icon: <Clock className="h-5 w-5 text-amber-400" />,
+    badgeBg: "bg-[#FF3B00]",
+    textCol: "text-black",
+    icon: <Clock className="h-5 w-5 text-black" />,
   },
   context_mismatch: {
-    label: "Context Mismatch",
-    description: "The media appears genuine, but the accompanying claim is factually false.",
-    badgeClass: "bg-rose-950/60 text-rose-300 border-rose-500/40",
-    icon: <AlertTriangle className="h-5 w-5 text-rose-400" />,
+    label: "CONTEXT MISMATCH",
+    description: "The media appears genuine, but the accompanying narrative is factually false.",
+    badgeBg: "bg-[#FF3B00]",
+    textCol: "text-black",
+    icon: <AlertTriangle className="h-5 w-5 text-black" />,
   },
   geographic_mismatch: {
-    label: "Geographic Mismatch",
+    label: "GEOGRAPHIC MISMATCH",
     description: "The media is real, but it is being falsely attributed to a different location.",
-    badgeClass: "bg-purple-950/60 text-purple-300 border-purple-500/40",
-    icon: <ShieldAlert className="h-5 w-5 text-purple-400" />,
+    badgeBg: "bg-black",
+    textCol: "text-white",
+    icon: <ShieldAlert className="h-5 w-5 text-white" />,
   },
   event_mismatch: {
-    label: "Event Mismatch",
-    description: "The media is real, but it depicts a different event than the one claimed.",
-    badgeClass: "bg-orange-950/60 text-orange-300 border-orange-500/40",
-    icon: <AlertTriangle className="h-5 w-5 text-orange-400" />,
+    label: "EVENT MISMATCH",
+    description: "The media is real, but it depicts a completely different event than claimed.",
+    badgeBg: "bg-[#FF3B00]",
+    textCol: "text-black",
+    icon: <AlertTriangle className="h-5 w-5 text-black" />,
   },
   claim_supported: {
-    label: "Claim Supported",
+    label: "CLAIM SUPPORTED",
     description: "Both media and accompanying claim are corroborated by available evidence.",
-    badgeClass: "bg-emerald-950/60 text-emerald-300 border-emerald-500/40",
-    icon: <CheckCircle2 className="h-5 w-5 text-emerald-400" />,
+    badgeBg: "bg-white",
+    textCol: "text-black",
+    icon: <CheckCircle2 className="h-5 w-5 text-black" />,
   },
   unverified: {
-    label: "Insufficient Evidence / Unverified",
+    label: "INSUFFICIENT EVIDENCE",
     description: "Available verified evidence is currently insufficient to determine veracity.",
-    badgeClass: "bg-slate-800 text-slate-300 border-slate-600",
-    icon: <HelpCircle className="h-5 w-5 text-slate-400" />,
+    badgeBg: "bg-[#F4F1EA]",
+    textCol: "text-black",
+    icon: <HelpCircle className="h-5 w-5 text-black" />,
   },
 };
 
@@ -84,6 +86,7 @@ export default function VerifyWorkspace() {
   const [mediaId, setMediaId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const handleFileUpload = async (file: File) => {
     if (file.type.startsWith("video/") && file.size > 100 * 1024 * 1024) {
@@ -133,6 +136,8 @@ export default function VerifyWorkspace() {
     }
 
     setIsVerifying(true);
+    setVerificationError(null);
+    setResult(null);
 
     const claim = {
       rawText: claimText,
@@ -161,56 +166,58 @@ export default function VerifyWorkspace() {
         const data: VerificationResult = await response.json();
         setResult(data);
       } else {
-        console.error("Verification API failed with status:", response.status);
+        const errData = await response.json();
+        console.error("Verification API failed with status:", response.status, errData);
+        setVerificationError(errData.message || "Verification failed");
       }
     } catch (err) {
       console.error("Failed to query verification API:", err);
+      setVerificationError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setIsVerifying(false);
     }
   };
 
   return (
-    <div className="py-8 md:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Workspace Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-8 border-b border-slate-800 gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-md bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 text-xs text-blue-400 font-mono mb-2">
-              <Sparkles className="h-3 w-3" />
-              <span>Verification Workspace &bull; Foundation Phase</span>
+    <div className="py-8 sm:py-12 font-mono">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Workspace Top Header */}
+        <div className="border-b-2 border-black pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 text-left">
+          <div className="space-y-2">
+            <div className="inline-block border border-black bg-black text-white px-2.5 py-0.5 text-xs font-bold uppercase tracking-widest">
+              [ FORENSIC CONSOLE // INVESTIGATION WORKSPACE ]
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Investigate Media Context
+            <h1 className="font-serif text-3xl sm:text-5xl font-black uppercase tracking-tight text-black">
+              Investigate Context
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Provide media and the accompanying narrative to break down atomic claims and trace evidence.
+            <p className="text-xs sm:text-sm text-black max-w-2xl">
+              Provide suspect media and the claimed caption. ContextLock decomposes claims into verifiable atomic nodes and queries grounding truth engines.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Buttons can go here if needed in future */}
+          <div className="flex items-center gap-2">
+            
           </div>
         </div>
 
         {/* Input Form & Preview Grid */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-left">
           {/* Left Column: Media & Claim Inputs (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Step 1: Media Upload Placeholder */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono">
-                  1. Media Input
+            {/* Step 1: Media Input */}
+            <div className="border-2 border-black bg-white p-5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-black">
+                <span className="text-xs font-bold uppercase tracking-wider text-black">
+                  [STEP 01] MEDIA SPECIMEN
                 </span>
-                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-md border border-slate-800 text-xs">
+                <div className="flex items-center border border-black bg-white text-xs">
                   <button
                     type="button"
                     onClick={() => setMediaType("image")}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    className={`px-3 py-1 font-bold uppercase transition-none ${
                       mediaType === "image"
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-black text-white"
+                        : "text-black hover:bg-[#F4F1EA]"
                     }`}
                   >
                     Image
@@ -218,10 +225,10 @@ export default function VerifyWorkspace() {
                   <button
                     type="button"
                     onClick={() => setMediaType("video")}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    className={`px-3 py-1 font-bold uppercase transition-none border-l border-black ${
                       mediaType === "video"
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-black text-white"
+                        : "text-black hover:bg-[#F4F1EA]"
                     }`}
                   >
                     Video
@@ -229,20 +236,26 @@ export default function VerifyWorkspace() {
                 </div>
               </div>
 
-              {/* Upload Dropzone Placeholder */}
-              <div className="mt-4">
+              {/* Upload Dropzone */}
+              <div>
                 <label
                   htmlFor="media-file-input"
-                  className={`group flex flex-col items-center justify-center rounded-lg border-2 border-dashed ${isUploading ? 'border-cyan-500 opacity-75 cursor-wait' : 'border-slate-700 hover:border-cyan-500/60 cursor-pointer'} bg-slate-950/50 p-6 text-center transition-all`}
+                  className={`flex flex-col items-center justify-center border-2 border-dashed border-black bg-[#F4F1EA] p-6 text-center cursor-pointer hover:bg-white transition-none ${
+                    isUploading ? "opacity-60 cursor-wait" : ""
+                  }`}
                 >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 ${isUploading ? '' : 'group-hover:bg-cyan-950/60'} text-slate-400 ${isUploading ? 'text-cyan-400' : 'group-hover:text-cyan-400'} transition-colors`}>
-                    {isUploading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
+                  <div className="flex h-10 w-10 items-center justify-center border border-black bg-white text-black">
+                    {isUploading ? (
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Upload className="h-5 w-5" />
+                    )}
                   </div>
-                  <p className={`mt-3 text-sm font-medium text-slate-300 ${isUploading ? '' : 'group-hover:text-cyan-300'}`}>
-                    {isUploading ? 'Uploading...' : `Click to browse or drop ${mediaType} file`}
+                  <p className="mt-3 text-xs font-bold uppercase text-black">
+                    {isUploading ? "INGESTING MEDIA..." : `SELECT OR DROP ${mediaType.toUpperCase()} FILE`}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Supports JPG, PNG, WEBP, MP4, MOV (Up to 100MB)
+                  <p className="mt-1 text-[10px] text-neutral-600">
+                    JPG, PNG, WEBP, MP4, MOV (MAX 100MB)
                   </p>
                   <input
                     id="media-file-input"
@@ -258,19 +271,19 @@ export default function VerifyWorkspace() {
                 </label>
 
                 {uploadError && (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-950/40 px-3 py-2 border border-rose-900/50 text-xs text-rose-400">
-                    <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>{uploadError}</span>
+                  <div className="mt-3 border-2 border-black bg-[#FF3B00] p-2 text-xs font-bold text-black flex items-center gap-2">
+                    <XCircle className="h-4 w-4 shrink-0" />
+                    <span>ERROR: {uploadError}</span>
                   </div>
                 )}
 
                 {selectedFileName && !uploadError && (
-                  <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-950 px-3 py-2 border border-slate-800 text-xs">
-                    <span className="font-mono text-cyan-400 truncate max-w-[240px]">
-                      {selectedFileName}
+                  <div className="mt-3 border border-black bg-[#F4F1EA] p-2 flex items-center justify-between text-xs">
+                    <span className="font-bold truncate max-w-[220px]">
+                      FILE: {selectedFileName}
                     </span>
-                    <span className="text-slate-400 text-[11px]">
-                      {isUploading ? 'Uploading...' : mediaId ? 'Uploaded & Ready' : 'Ready'}
+                    <span className="border border-black bg-white px-1.5 py-0.5 text-[10px] font-bold">
+                      {isUploading ? "UPLOADING" : mediaId ? "READY_STORED" : "READY"}
                     </span>
                   </div>
                 )}
@@ -278,62 +291,62 @@ export default function VerifyWorkspace() {
             </div>
 
             {/* Step 2: Context / Claim Inputs */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono block pb-3 border-b border-slate-800">
-                2. Accompanying Claim / Context
+            <div className="border-2 border-black bg-white p-5 space-y-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-black block pb-3 border-b-2 border-black">
+                [STEP 02] CLAIM NARRATIVE / CONTEXT
               </span>
 
-              <div className="mt-4 space-y-4">
+              <div className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Claim, Caption, or Forwarded Message:
+                  <label className="block font-bold uppercase text-black mb-1">
+                    FORWARDED CLAIM / CAPTION:
                   </label>
                   <textarea
                     rows={3}
                     value={claimText}
                     onChange={(e) => setClaimText(e.target.value)}
-                    placeholder="e.g. This video shows today's massive flooding in Mangalore."
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    placeholder="e.g. 'This video shows today's massive flooding in Mangalore.'"
+                    className="w-full border-2 border-black bg-[#F4F1EA] p-2.5 text-xs text-black placeholder-neutral-500 focus:bg-white focus:outline-none font-mono"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Claimed Location:
+                    <label className="block font-bold uppercase text-black mb-1">
+                      CLAIMED LOCATION:
                     </label>
                     <input
                       type="text"
                       value={claimedLocation}
                       onChange={(e) => setClaimedLocation(e.target.value)}
                       placeholder="e.g. Mangalore"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 focus:border-cyan-500 focus:outline-none"
+                      className="w-full border-2 border-black bg-[#F4F1EA] p-2 text-xs text-black focus:bg-white focus:outline-none font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Claimed Time / Date:
+                    <label className="block font-bold uppercase text-black mb-1">
+                      CLAIMED DATE / TIME:
                     </label>
                     <input
                       type="text"
                       value={claimedDate}
                       onChange={(e) => setClaimedDate(e.target.value)}
                       placeholder="e.g. Today"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 focus:border-cyan-500 focus:outline-none"
+                      className="w-full border-2 border-black bg-[#F4F1EA] p-2 text-xs text-black focus:bg-white focus:outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Source / Platform:
+                  <label className="block font-bold uppercase text-black mb-1">
+                    SOURCE PLATFORM / VECTOR:
                   </label>
                   <input
                     type="text"
                     value={sourcePlatform}
                     onChange={(e) => setSourcePlatform(e.target.value)}
-                    placeholder="e.g. WhatsApp, X (Twitter), Telegram"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 focus:border-cyan-500 focus:outline-none"
+                    placeholder="e.g. WhatsApp Forward, X / Twitter"
+                    className="w-full border-2 border-black bg-[#F4F1EA] p-2 text-xs text-black focus:bg-white focus:outline-none font-mono"
                   />
                 </div>
 
@@ -342,17 +355,17 @@ export default function VerifyWorkspace() {
                   type="button"
                   onClick={handleVerification}
                   disabled={isVerifying}
-                  className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
+                  className="w-full mt-2 inline-flex items-center justify-center gap-2 border-2 border-black bg-black hover:bg-[#FF3B00] text-white hover:text-black py-3.5 px-4 text-xs font-bold uppercase tracking-wider transition-none disabled:opacity-50"
                 >
                   {isVerifying ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Investigating Context...</span>
+                      <span>DECONSTRUCTING CLAIMS...</span>
                     </>
                   ) : (
                     <>
                       <Search className="h-4 w-4" />
-                      <span>Investigate Claim &amp; Evidence</span>
+                      <span>EXECUTE CONTEXT AUDIT</span>
                     </>
                   )}
                 </button>
@@ -362,42 +375,54 @@ export default function VerifyWorkspace() {
 
           {/* Right Column: Verification Results (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
+            {verificationError && (
+              <div className="border-2 border-red-600 bg-red-50 p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                  <h2 className="font-serif text-xl font-black uppercase text-red-600">
+                    VERIFICATION FAILED
+                  </h2>
+                </div>
+                <p className="text-sm text-red-800 font-mono">{verificationError}</p>
+              </div>
+            )}
+            
             {result ? (
               <>
                 {/* Result Status Banner */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 backdrop-blur-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <div className="border-2 border-black bg-white p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b-2 border-black gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="border-2 border-black bg-[#F4F1EA] p-2">
                         {contextStatusDisplay[result.contextStatus]?.icon}
                       </div>
                       <div>
-                        <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
-                          CONTEXT VERIFICATION STATUS
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-600">
+                          FORENSIC VERDICT // CONTEXT INTEGRITY
                         </span>
-                        <h2 className="text-xl font-bold text-white">
+                        <h2 className="font-serif text-2xl font-black uppercase text-black">
                           {contextStatusDisplay[result.contextStatus]?.label}
                         </h2>
                       </div>
                     </div>
 
                     <div
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-semibold border ${
-                        contextStatusDisplay[result.contextStatus]?.badgeClass
-                      }`}
+                      className={`inline-flex items-center px-3 py-1 text-xs font-bold uppercase border-2 border-black ${
+                        contextStatusDisplay[result.contextStatus]?.badgeBg
+                      } ${contextStatusDisplay[result.contextStatus]?.textCol}`}
                     >
                       {contextStatusDisplay[result.contextStatus]?.label}
                     </div>
                   </div>
 
-                  <p className="mt-4 text-sm leading-relaxed text-slate-300">
+                  <p className="text-xs sm:text-sm leading-relaxed text-black bg-[#F4F1EA] p-3.5 border border-black">
                     {result.summaryExplanation}
                   </p>
 
-                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-400 font-mono gap-2">
-                    <span>Target Claim: &ldquo;{result.claim.rawText}&rdquo;</span>
+                  <div className="pt-2 border-t border-black flex flex-wrap items-center justify-between text-[11px] text-black gap-2 font-bold uppercase">
+                    <span>TARGET: &ldquo;{result.claim.rawText}&rdquo;</span>
                     {result.geminiModelUsed && (
-                      <span className="text-cyan-400">&bull; {result.geminiModelUsed}</span>
+                      <span className="text-[#FF3B00]">&bull; {result.geminiModelUsed}</span>
                     )}
                   </div>
                 </div>
@@ -410,15 +435,15 @@ export default function VerifyWorkspace() {
                   />
                 )}
 
-                {/* Atomic Claims Deconstruction Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-cyan-400" />
-                      <span>Atomic Claim Deconstruction</span>
+                {/* Layer 02: Atomic Claims Deconstruction Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-black flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-black" />
+                      <span>ATOMIC CLAIM DECONSTRUCTION MATRIX</span>
                     </h3>
-                    <span className="text-xs text-slate-400">
-                      {result.atomicClaims.length} Claims Evaluated
+                    <span className="border border-black bg-white px-2 py-0.5 text-[10px] font-bold">
+                      {result.atomicClaims.length} CLAIMS
                     </span>
                   </div>
 
@@ -430,14 +455,14 @@ export default function VerifyWorkspace() {
                 </div>
 
                 {/* Evidence & Grounding Sources Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-400" />
-                      <span>Traceable Evidence &amp; Sources</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-black flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-black" />
+                      <span>GROUNDED CITATIONS &amp; EXTERNAL EVIDENCE</span>
                     </h3>
-                    <span className="text-xs text-slate-400">
-                      {result.evidence.length} Sources Connected
+                    <span className="border border-black bg-white px-2 py-0.5 text-[10px] font-bold">
+                      {result.evidence.length} SOURCES
                     </span>
                   </div>
 
@@ -449,13 +474,13 @@ export default function VerifyWorkspace() {
                 </div>
               </>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-12 text-center">
-                <Search className="h-10 w-10 text-slate-600 mx-auto" />
-                <h3 className="mt-4 text-base font-semibold text-slate-300">
-                  No Active Investigation
+              <div className="border-2 border-dashed border-black bg-white p-12 text-center space-y-3">
+                <Search className="h-10 w-10 text-black mx-auto" />
+                <h3 className="font-serif text-xl font-bold uppercase text-black">
+                  No Active Case Investigation
                 </h3>
-                <p className="mt-1 text-xs text-slate-400 max-w-sm mx-auto">
-                  Submit a claim and media file on the left to deconstruct atomic claims and trace evidence sources.
+                <p className="text-xs text-neutral-600 max-w-sm mx-auto">
+                  Submit media and narrative on the left to deconstruct atomic claims and trace external evidence.
                 </p>
               </div>
             )}
@@ -465,3 +490,4 @@ export default function VerifyWorkspace() {
     </div>
   );
 }
+

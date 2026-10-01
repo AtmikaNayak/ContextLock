@@ -3,12 +3,23 @@ import { VerifyRequestSchema, VerificationResult, EvidenceSource, AtomicClaim, C
 import { getSupabaseClient } from "@/lib/supabase";
 import { MEDIA_BUCKET_NAME } from "@/lib/media/storage";
 import {
-  analyzeMedia,
   retrieveEvidence,
+} from "@/lib/gemini-service";
+import {
+  analyzeMedia,
   analyzeEvidence,
   decomposeClaims,
-} from "@/lib/gemini-service";
+} from "@/lib/ai/provider";
 import { z } from "zod";
+
+function logStep(step: string, details?: unknown) {
+  if (details) {
+    console.log(`[VERIFY] ${step}`, details);
+  } else {
+    console.log(`[VERIFY] ${step}`);
+  }
+}
+
 
 // Extend the existing schema to explicitly require caseId and mediaId for the pipeline
 const PipelineRequestSchema = VerifyRequestSchema.extend({
@@ -19,13 +30,16 @@ const PipelineRequestSchema = VerifyRequestSchema.extend({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    logStep("Request received");
 
     // 1. INPUT VALIDATION
     const validationResult = PipelineRequestSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
         {
-          error: "Invalid verification request payload",
+          success: false,
+          error: "INVALID_REQUEST",
+          message: "Invalid verification request payload",
           details: validationResult.error.format(),
         },
         { status: 400 }
@@ -33,6 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { caseId, mediaId, claim } = validationResult.data;
+    logStep("validation", { caseId, mediaId, claimText: claim.rawText });
     const supabase = getSupabaseClient();
 
     // 2. MEDIA LOADING
@@ -45,11 +60,12 @@ export async function POST(req: NextRequest) {
 
     if (mediaError || !mediaRecord) {
       return NextResponse.json(
-        { error: "Media not found for the provided case and media IDs." },
+        { success: false, error: "MEDIA_NOT_FOUND", message: "Media not found for the provided case and media IDs." },
         { status: 404 }
       );
     }
 
+    logStep("media lookup", "success");
     // Download media from storage to analyze it
     const { data: storageData, error: storageError } = await supabase.storage
       .from(MEDIA_BUCKET_NAME)
@@ -57,18 +73,18 @@ export async function POST(req: NextRequest) {
 
     if (storageError || !storageData) {
       return NextResponse.json(
-        { error: "Failed to retrieve media file from storage." },
+        { success: false, error: "STORAGE_ERROR", message: "Failed to retrieve media file from storage." },
         { status: 500 }
       );
     }
-
     const arrayBuffer = await storageData.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
-
     // 3. MEDIA ANALYSIS
+    logStep("media analysis");
     let mediaObservations;
+    let aiModelUsed = "";
     try {
-      mediaObservations = await analyzeMedia({
+      const aiRes = await analyzeMedia({
         textPrompt: "Analyze the provided media and extract objective, verifiable observations without forming conclusions.",
         mediaParts: [
           {
@@ -79,52 +95,97 @@ export async function POST(req: NextRequest) {
           },
         ],
       });
-    } catch (e) {
-      console.error("Media analysis failed:", e);
+      mediaObservations = aiRes.data;
+      aiModelUsed = aiRes.model;
+    } catch (e: unknown) {
+      console.error("[MEDIA] Gemini analysis failed:", e);
+      const err = e as { message?: string, status?: number, statusCode?: number };
+      console.error("Error details:", {
+          message: err.message,
+          status: err.status || err.statusCode,
+          model: "gemini-3.5-flash-lite", // or whatever model is used
+          payloadSize: base64Data.length,
+          mimeType: mediaRecord.mime_type,
+      });
       return NextResponse.json(
-        { error: "Media analysis failed." },
+        { success: false, error: "MEDIA_ANALYSIS_FAILED", message: "Media analysis failed." },
         { status: 500 }
       );
     }
 
     // 4. CLAIM DECOMPOSITION
-    const atomicClaims = await decomposeClaims(claim.rawText);
+    logStep("claim decomposition");
+    const decompRes = await decomposeClaims(claim.rawText);
+    const atomicClaims = decompRes.data;
 
-    // 5 & 6. EVIDENCE RETRIEVAL & REASONING (Concurrent per claim)
+    // 5. EVIDENCE RETRIEVAL (One single search for the entire claim)
     const allEvidenceSources: EvidenceSource[] = [];
+    let overarchingEvidence: EvidenceSource[] = [];
+    logStep(`evidence retrieval started for overarching user claim`);
+    try {
+      const overarchingClaim: AtomicClaim = {
+        id: "claim_main",
+        type: "other",
+        claimText: claim.rawText,
+        status: "insufficient",
+        confidenceScore: 0,
+        explanation: "",
+        evidenceIds: [],
+      };
+      
+      overarchingEvidence = await retrieveEvidence(overarchingClaim, atomicClaims);
+      logStep(`evidence retrieval finished, count: ${overarchingEvidence.length}`);
+    } catch (err) {
+      console.error(`Evidence retrieval failed for main claim:`, err);
+      logStep("EVIDENCE_RETRIEVAL_FAILED", err instanceof Error ? err.message : String(err));
+    }
+
+    // 6. REASONING (Sequential per claim)
     const processedAtomicClaims: AtomicClaim[] = [];
 
-    const claimPromises = atomicClaims.map(async (ac) => {
-      let retrievedEvidence: EvidenceSource[] = [];
-      try {
-        retrievedEvidence = await retrieveEvidence(ac, atomicClaims);
-      } catch (err) {
-        console.error(`Evidence retrieval failed for claim ${ac.id}:`, err);
-        // Fallback to empty evidence, allowing reasoning to mark it as insufficient
-      }
+    for (let i = 0; i < atomicClaims.length; i++) {
+      const ac = atomicClaims[i];
 
       let reasoningResult;
       try {
-        reasoningResult = await analyzeEvidence(ac, retrievedEvidence, atomicClaims);
+        logStep(`reasoning started for claim ${ac.id}`);
+        const resRes = await analyzeEvidence(ac, overarchingEvidence, atomicClaims);
+        reasoningResult = resRes.data;
+        logStep(`reasoning finished for claim ${ac.id}`);
       } catch (err) {
         console.error(`Reasoning failed for claim ${ac.id}:`, err);
-        // Fallback reasoning
-        reasoningResult = {
-          status: "insufficient" as const,
-          explanation: "Reasoning analysis failed or was unavailable.",
-          evidenceRelationships: []
-        };
+        logStep("REASONING_FAILED", err instanceof Error ? err.message : String(err));
+        throw new Error(`Reasoning failed: ${err instanceof Error ? err.message : String(err)}`);
       }
 
-      // Merge newly retrieved evidence, updating relationships from reasoning
-      retrievedEvidence.forEach((ev) => {
-        const rel = reasoningResult.evidenceRelationships.find(r => r.evidenceId === ev.id);
+      // Merge evidence relationships and add to overall list
+      overarchingEvidence.forEach((ev) => {
+        // Deep clone to avoid mutating the shared overarchingEvidence
+        const clonedEv = { ...ev };
+        const rel = reasoningResult.evidenceRelationships.find((r: { evidenceId: string, relationship: string }) => r.evidenceId === clonedEv.id);
         if (rel) {
-          ev.relationship = rel.relationship;
+          clonedEv.relationship = rel.relationship;
         } else {
-          ev.relationship = "unrelated";
+          clonedEv.relationship = "unrelated";
         }
-        allEvidenceSources.push(ev);
+        
+        // Track the strongest relationship for each evidence across all claims
+        const existingEvIndex = allEvidenceSources.findIndex(e => e.id === clonedEv.id);
+        if (existingEvIndex === -1) {
+          allEvidenceSources.push(clonedEv);
+        } else {
+          // Upgrade relationship if necessary (supports > context > unrelated)
+          const currentRel = allEvidenceSources[existingEvIndex].relationship;
+          const newRel = clonedEv.relationship;
+          
+          if (newRel === "supports" && currentRel !== "supports") {
+            allEvidenceSources[existingEvIndex].relationship = "supports";
+          } else if (newRel === "contradicts" && currentRel !== "supports" && currentRel !== "contradicts") {
+            allEvidenceSources[existingEvIndex].relationship = "contradicts";
+          } else if (newRel === "context" && currentRel === "unrelated") {
+            allEvidenceSources[existingEvIndex].relationship = "context";
+          }
+        }
       });
 
       processedAtomicClaims.push({
@@ -132,13 +193,12 @@ export async function POST(req: NextRequest) {
         type: ac.type,
         claimText: ac.claimText,
         status: reasoningResult.status,
-        confidenceScore: 0.9, // Defaulting as we don't calculate probabilistic confidences in phase 6 yet
+        confidenceScore: 0.9,
         explanation: reasoningResult.explanation,
-        evidenceIds: retrievedEvidence.map((e) => e.id),
+        evidenceIds: overarchingEvidence.map((e) => e.id),
       });
-    });
+    }
 
-    await Promise.all(claimPromises);
 
     // 7. RESULT AGGREGATION & CONTEXT STATUS
     // Derive ContextStatus based on atomic claim statuses conservatively
@@ -180,16 +240,19 @@ export async function POST(req: NextRequest) {
       summaryExplanation: `The claim was evaluated against external evidence. The overall status is determined as ${overallContextStatus} based on the underlying atomic claims.`,
       atomicClaims: processedAtomicClaims,
       evidence: allEvidenceSources,
+      geminiModelUsed: aiModelUsed,
     };
 
     // Return VerificationResult-compatible response
+    logStep("final result", overallContextStatus);
     return NextResponse.json(verificationResult, { status: 200 });
 
   } catch (err: unknown) {
     console.error("Verification Pipeline Error:", err);
     return NextResponse.json(
       {
-        error: "Internal server error during verification request processing",
+        success: false,
+        error: "INTERNAL_SERVER_ERROR",
         message: err instanceof Error ? err.message : String(err),
       },
       { status: 500 }

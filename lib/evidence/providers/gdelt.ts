@@ -26,13 +26,23 @@ export class GdeltEvidenceProvider implements EvidenceProvider {
 
       const data = await response.json();
       if (!data || !data.articles || !Array.isArray(data.articles)) {
-        return [];
+        throw new Error("Invalid GDELT API response format: missing or invalid articles array");
       }
 
-      return this.normalizeResults(data.articles).slice(0, maxRecords);
-    } catch (err) {
+      const results = this.normalizeResults(data.articles).slice(0, maxRecords);
+      console.log("[GDELT] Query:", query);
+      console.log("[GDELT] Status:", response.status);
+      console.log("[GDELT] Raw result count:", data.articles.length);
+      console.log("[GDELT] Parsed evidence count:", results.length);
+      return results;
+    } catch (err: unknown) {
       console.error("GDELT fetch failed:", err);
-      return [];
+      // Adding debug logs per instructions
+      console.log("[GDELT] Request URL:", url.toString());
+      console.log("[GDELT] Status:", err instanceof Error && err.message.includes("Too Many Requests") ? 429 : (err instanceof Error ? err.message : 'Unknown'));
+      console.log("[GDELT] Raw result count: 0");
+      console.log("[GDELT] Parsed evidence count: 0");
+      throw new Error(err instanceof Error ? err.message : String(err));
     }
   }
 

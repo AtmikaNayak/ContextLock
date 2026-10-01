@@ -378,14 +378,26 @@ export async function retrieveEvidence(
   options?: { model?: string; onModelUsed?: (model: string) => void }
 ): Promise<import("@/types").EvidenceSource[]> {
   try {
+    // 1. Try Gemini Grounded Search
+    try {
+      const geminiResults = await retrieveEvidenceGeminiGrounded(targetClaim, contextClaims, options);
+      if (geminiResults && geminiResults.length > 0) {
+        return geminiResults;
+      }
+    } catch (geminiErr: unknown) {
+      console.warn("Gemini Grounded Search unavailable/failed:", geminiErr instanceof Error ? geminiErr.message : String(geminiErr));
+      // Fall through to secondary providers
+    }
+
+    // 2. Try Fallback Evidence Providers (Google News RSS -> GDELT)
     return await defaultEvidenceProvider.search({
       claim: targetClaim,
       relatedClaims: contextClaims,
       maxResults: 5
     });
   } catch (err) {
-    console.error("Evidence retrieval provider failed:", err);
-    return [];
+    console.error("All evidence retrieval providers failed:", err);
+    throw err;
   }
 }
 

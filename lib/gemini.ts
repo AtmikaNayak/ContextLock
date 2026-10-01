@@ -22,7 +22,7 @@ if (typeof window !== "undefined") {
  */
 export const GEMINI_MODELS = {
   // Primary model for multimodal visual reasoning, claim decomposition, and structured analysis
-  DEFAULT: process.env.GEMINI_MODEL || "gemini-3.8-flash",
+  DEFAULT: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
   // Cost-efficient, high-throughput model for lightweight atomic checks and demand spike fallback
   FAST: "gemini-3.5-flash-lite",
   // Advanced reasoning model for complex cross-source conflict synthesis
